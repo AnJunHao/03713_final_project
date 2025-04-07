@@ -99,9 +99,6 @@ Submit the job:
 sbatch human_to_mouse_liver.job
 ```
 
-the output file idr.optimal_peak_pancreas.HumanToMouse.HALPER.narrowPeak.gz and idr.optimal_peak_liver.HumanToMouse.HALPER.narrowPeak.gz represent the open chromatin regions in human whose orthologs in mouse are open,
-
-and for the output file mouse_pancreas.idr.optimal_peak.MouseToHuman.HALPER.narrowPeak.gz and mouse_liver.idr.optimal_peak.MouseToHuman.HALPER.narrowPeak.gz represent the open chromatin regions in mouse whose orthologs in human are open
 
 ------
 
@@ -139,6 +136,14 @@ bedtools intersect -a "$HUMAN_LIVER" -b "$HUMAN_PANCREAS" -v > results/human_liv
 bedtools intersect -a "$MOUSE_PANCREAS" -b "$MOUSE_LIVER" -u > results/mouse_shared_peaks.bed
 bedtools intersect -a "$MOUSE_PANCREAS" -b "$MOUSE_LIVER" -v > results/mouse_pancreas_specific.bed
 bedtools intersect -a "$MOUSE_LIVER" -b "$MOUSE_PANCREAS" -v > results/mouse_liver_specific.bed
+
+echo "Comparing cross-species conservation..."
+
+bedtools intersect -a "$HP_TO_MOUSE" -b "$MOUSE_PANCREAS" -u > results/human_pancreas_to_mouse_open.bed
+bedtools intersect -a "$HP_TO_MOUSE" -b "$MOUSE_PANCREAS" -v > results/human_pancreas_to_mouse_closed.bed
+
+bedtools intersect -a "$HL_TO_MOUSE" -b "$MOUSE_LIVER" -u > results/human_liver_to_mouse_open.bed
+bedtools intersect -a "$HL_TO_MOUSE" -b "$MOUSE_LIVER" -v > results/human_liver_to_mouse_closed.bed
 
 echo "Summary:"
 for f in results/*.bed; do
