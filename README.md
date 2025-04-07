@@ -12,7 +12,7 @@ Follow the instructions in the official HAL liftover postprocessing guide to ins
 
 ------
 
-### 2. Cross-Species Comparison of Open Chromatin Regions with halLiftover and HALPER (Human to mouse)
+### 2. Mapping of chromatin regions cross species with halLiftover and HALPER (Human to mouse)
 
 
  🔗 [halLiftover-postprocessing](https://github.com/pfenninglab/halLiftover-postprocessing/tree/master)
@@ -104,7 +104,7 @@ sbatch human_to_mouse_liver.job
 
 
 
-## 3. Cross-Tissue Comparison of Open Chromatin Regions
+## 3.  Cross-Species and Cross-Tissue Comparison of Open Chromatin Regions
 
 ```
 module load bedtools/2.30.0  
