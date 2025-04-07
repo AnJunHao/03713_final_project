@@ -1,0 +1,32 @@
+no change     /opt/packages/anaconda3-2024.10-1/condabin/conda
+no change     /opt/packages/anaconda3-2024.10-1/bin/conda
+no change     /opt/packages/anaconda3-2024.10-1/bin/conda-env
+no change     /opt/packages/anaconda3-2024.10-1/bin/activate
+no change     /opt/packages/anaconda3-2024.10-1/bin/deactivate
+no change     /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.sh
+no change     /opt/packages/anaconda3-2024.10-1/etc/fish/conf.d/conda.fish
+no change     /opt/packages/anaconda3-2024.10-1/shell/condabin/Conda.psm1
+no change     /opt/packages/anaconda3-2024.10-1/shell/condabin/conda-hook.ps1
+no change     /opt/packages/anaconda3-2024.10-1/lib/python3.12/site-packages/xontrib/conda.xsh
+no change     /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.csh
+modified      /jet/home/yma6/.bashrc
+
+==> For changes to take effect, close and re-open your current shell. <==
+
+Bed file is /ocean/projects/bio230007p/yma6/data/idr.optimal_peak_pancreas.narrowPeak.
+Output dir is /ocean/projects/bio230007p/yma6/halper_result.
+Source species Human.
+Target species Mouse.
+Multi-species cactus alignment file is /ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal.
+Non-unique bed peak names detected. Giving unique names now.
+Bed file doesn't have name column. Adding
+Appending CHR:START-END:SUMMIT to NAME column.
+Formatting bed score and strand columns.
+no /scratch dir, using cactus file /ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal
+Extracting bed/narrowpeak summits to halLiftover.
+Summits detected. Using the summits.
+Lifting Human summits to Mouse genome.
+Lifting Human peaks to Mouse genome.
+Apply HALPER to identify 1-1 orthologous in the Mouse genome.
+Mapped 97078 peaks out of 184782 total peaks.
+Done.

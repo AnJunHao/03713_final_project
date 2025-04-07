@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH -p RM-shared
+#SBATCH -t 24:00:00
+#SBATCH --ntasks-per-node=4
+
+source ~/.bashrc
+module load anaconda3
+conda init
+conda activate hal
+
+bash /ocean/projects/bio230007p/yma6/halLiftover-postprocessing/halper_map_peak_orthologs.sh \
+  -b /ocean/projects/bio230007p/yma6/data/idr.optimal_peak_liver.narrowPeak \
+  -o /ocean/projects/bio230007p/yma6/halper_result \
+  -s Human \
+  -t Mouse \
+  -c /ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal
