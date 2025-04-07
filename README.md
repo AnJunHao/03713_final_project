@@ -151,7 +151,11 @@ done
 ```
 Summary:
 human_liver_specific.bed: 60831 peaks
+human_liver_to_mouse_closed.bed: 41778 peaks
+human_liver_to_mouse_open.bed: 37002 peaks
 human_pancreas_specific.bed: 62075 peaks
+human_pancreas_to_mouse_closed.bed: 54012 peaks
+human_pancreas_to_mouse_open.bed: 43066 peaks
 human_shared_peaks.bed: 122707 peaks
 mouse_liver_specific.bed: 67512 peaks
 mouse_pancreas_specific.bed: 25967 peaks
