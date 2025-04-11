@@ -1,8 +1,8 @@
 # Base Settings
-species_1: "human"
-species_2: "mouse"
-organ_1: "pancreas"
-organ_2: "liver"
+species_1: "Human"
+species_2: "Mouse"
+organ_1: "Pancreas"
+organ_2: "Liver"
 temp_dir: "/ocean/projects/bio230007p/can1/temp"
 output_dir: "/ocean/projects/bio230007p/can1/output"
 
