@@ -36,7 +36,7 @@ class HalperConfig:
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
-def load_config(config_path: Path) -> HalperConfig:
+def load_halper_config(config_path: Path) -> HalperConfig:
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
@@ -157,9 +157,9 @@ def generate_script(config: HalperConfig) -> Path:
     
     return master_script
 
-def submit_jobs(config: HalperConfig) -> None:
+def run_halper_pipeline(config_path: Path) -> None:
     """
-    Submit all mapping jobs in parallel.
+    Run the HALPER pipeline.
 
     Args:
         config: A HalperConfig object.
@@ -167,6 +167,7 @@ def submit_jobs(config: HalperConfig) -> None:
     Returns:
         None
     """
+    config = load_halper_config(config_path)
     master_script = generate_script(config)
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
-    print(f"Master script output:\n{result.stdout}")
+    print(f"{result.stdout}")
