@@ -326,5 +326,12 @@ def run_halper_pipeline(config_path: Path) -> bool:
         print(f"{result.stderr}")
         return False
     
+    print("If you want to manage and monitor the jobs manually, feel free to interrupt the script.")
+    print("Interrupting the script will not stop the jobs from running.")
+    
     # Monitor the submitted jobs
-    return monitor_jobs(output_logs, error_logs)
+    try:
+        return monitor_jobs(output_logs, error_logs)
+    except KeyboardInterrupt:
+        print("Keyboard interrupt detected. Jobs will still run.")
+        return False
