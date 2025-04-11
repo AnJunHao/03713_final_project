@@ -55,11 +55,12 @@ def load_halper_config(config_path: Path) -> HalperConfig:
         output_dir=Path(config["output_dir"])
     )
 
-script_template = """
-#!/bin/bash
+script_template = """#!/bin/bash
 #SBATCH -p RM-shared
 #SBATCH -t 12:00:00
 #SBATCH --ntasks-per-node=4
+#SBATCH --error={error_log}
+#SBATCH --output={output_log}
 
 module load anaconda3
 conda init
@@ -132,7 +133,9 @@ def generate_script(config: HalperConfig) -> Path:
         peak_file = mapping["peak_file"]
         
         script = config.temp_dir / f"map_{source_species}_{source_organ}_to_{target_species}.job"
-        
+        error_log = config.output_dir / f"map_{source_species}_{source_organ}_to_{target_species}.err.txt"
+        output_log = config.output_dir / f"map_{source_species}_{source_organ}_to_{target_species}.out.txt"
+
         with open(script, "w") as f:
             f.write(script_template.format(
                 source_species=source_species,
@@ -141,7 +144,9 @@ def generate_script(config: HalperConfig) -> Path:
                 halper_script=config.halper_script,
                 peak_file=peak_file,
                 output_dir=config.output_dir,
-                hal_file=config.hal_file
+                hal_file=config.hal_file,
+                error_log=error_log,
+                output_log=output_log
             ))
         script_paths.append(script)
     
@@ -171,3 +176,4 @@ def run_halper_pipeline(config_path: Path) -> None:
     master_script = generate_script(config)
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
     print(f"{result.stdout}")
+    print(f"{result.stderr}")
