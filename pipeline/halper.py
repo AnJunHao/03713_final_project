@@ -4,6 +4,7 @@ import subprocess
 import yaml
 from typing import NamedTuple, List
 import time
+from datetime import datetime
 
 @dataclass
 class HalperConfig:
@@ -195,21 +196,25 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
     """
     job_statuses = {str(log): "QUEUED" for log in output_logs}
     all_complete = False
+    start_time = datetime.now()
     
     # Print header once
-    print("Monitoring jobs...")
+    print("Monitoring job status...")
     
     # Initialize the status lines but don't print them yet
     status_lines = []
     for _ in range(len(output_logs)):
         status_lines.append("")
     
+    # Add an extra line for elapsed time
+    status_lines.append("")
+    
     while not all_complete:
         all_complete = True
         
         # Clear previous status lines if any exist
         if status_lines[0]:  # If we've already printed status lines
-            for _ in range(len(output_logs)):
+            for _ in range(len(output_logs) + 1):  # +1 for elapsed time
                 print("\033[A\033[K", end="")
         
         # Check and update each job's status
@@ -275,11 +280,31 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
             # Print current status
             print(status_lines[i])
         
+        # Calculate and display elapsed time
+        elapsed = datetime.now() - start_time
+        hours, remainder = divmod(elapsed.total_seconds(), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        elapsed_str = f"⏱️ Elapsed time: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
+        status_lines[-1] = elapsed_str
+        print(elapsed_str)
+        
         if not all_complete:
             time.sleep(1)  # Refresh every second
     
-    print("\n🎉 All jobs completed successfully!")
-    return True
+    # Count completed and error jobs
+    completed_jobs = sum(1 for status in job_statuses.values() if status == "COMPLETED")
+    error_jobs = sum(1 for status in job_statuses.values() if status == "ERROR")
+    total_jobs = len(job_statuses)
+    
+    # Print final status with appropriate emoji
+    if error_jobs == 0:
+        print(f"\n🎉 All {total_jobs} jobs completed successfully in {elapsed_str[12:]}")
+    elif completed_jobs == 0:
+        print(f"\n❌ All {total_jobs} jobs failed")
+    else:
+        print(f"\n⚠️ {completed_jobs}/{total_jobs} jobs completed, {error_jobs} jobs failed")
+    
+    return error_jobs == 0
 
 def run_halper_pipeline(config_path: Path) -> bool:
     """
@@ -302,5 +327,4 @@ def run_halper_pipeline(config_path: Path) -> bool:
         return False
     
     # Monitor the submitted jobs
-    print("Monitoring job status...")
     return monitor_jobs(output_logs, error_logs)
