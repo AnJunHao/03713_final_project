@@ -175,5 +175,7 @@ def run_halper_pipeline(config_path: Path) -> None:
     config = load_halper_config(config_path)
     master_script = generate_script(config)
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
-    print(f"{result.stdout}")
-    print(f"{result.stderr}")
+    if result.stderr:
+        print(f"{result.stderr}")
+    if result.stdout:
+        print(f"{result.stdout}")
