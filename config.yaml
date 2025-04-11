@@ -1,0 +1,14 @@
+# Base Settings
+species_1: "human"
+species_2: "mouse"
+organ_1: "pancreas"
+organ_2: "liver"
+temp_dir: "/ocean/projects/bio230007p/can1/temp"
+
+# HALPER Settings
+halper_script: "/ocean/projects/bio230007p/can1/halper/halper_map_peak_orthologs.sh"
+hal_file: "/ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal"
+species_1_organ_1_peak_file: ""
+species_1_organ_2_peak_file: ""
+species_2_organ_1_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/mouse_pancreas.idr.optimal_peak.narrowPeak"
+species_2_organ_2_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/mouse_liver.idr.optimal_peak.narrowPeak"
