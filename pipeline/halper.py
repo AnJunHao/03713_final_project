@@ -196,20 +196,19 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
     job_statuses = {str(log): "QUEUED" for log in output_logs}
     all_complete = False
     
-    # Print initial job status for each job
+    # Print header once
     print("Monitoring jobs...")
-    for out_log in output_logs:
-        job_name = out_log.name.replace(".out.txt", "")
-        print(f"📋 {job_name}: QUEUED")
     
-    # Counter to track iterations for cursor movement
-    iterations = 0
+    # Initialize the status lines but don't print them yet
+    status_lines = []
+    for _ in range(len(output_logs)):
+        status_lines.append("")
     
     while not all_complete:
         all_complete = True
         
-        # Move cursor up to overwrite previous status lines
-        if iterations > 0:
+        # Clear previous status lines if any exist
+        if status_lines[0]:  # If we've already printed status lines
             for _ in range(len(output_logs)):
                 print("\033[A\033[K", end="")
         
@@ -218,11 +217,11 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
             job_name = out_log.name.replace(".out.txt", "")
             status_icon = "📋"
             status_text = "QUEUED"
+            detail_text = ""
             
             # Check if logs exist
             if not out_log.exists() and not err_log.exists():
-                if job_statuses[str(out_log)] != "QUEUED":
-                    job_statuses[str(out_log)] = "QUEUED"
+                job_statuses[str(out_log)] = "QUEUED"
                 all_complete = False
             
             # Check if error log has content
@@ -233,6 +232,9 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
                         job_statuses[str(out_log)] = "ERROR"
                         status_icon = "❌"
                         status_text = "ERROR"
+                        # Get first line or first 50 chars of error
+                        err_lines = err_content.splitlines()
+                        detail_text = err_lines[-1][:50] + ("..." if len(err_lines[-1]) > 50 else "")
             
             # Check if output log exists and job is complete
             elif out_log.exists():
@@ -243,7 +245,13 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
                 with open(out_log, 'r') as f:
                     content = f.read().strip()
                     if content:
-                        last_line = content.splitlines()[-1] if content.splitlines() else ""
+                        lines = content.splitlines()
+                        last_line = lines[-1] if lines else ""
+                        
+                        # Get last line of output for detail text
+                        if lines:
+                            detail_text = lines[-1][:50] + ("..." if len(lines[-1]) > 50 else "")
+                        
                         if last_line == "Job finished":
                             job_statuses[str(out_log)] = "COMPLETED"
                             status_icon = "✅"
@@ -261,10 +269,12 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
             else:
                 all_complete = False
             
+            # Format and store the status line
+            status_lines[i] = f"{status_icon} {job_name} {status_text}: {detail_text}"
+            
             # Print current status
-            print(f"{status_icon} {job_name}: {status_text}")
+            print(status_lines[i])
         
-        iterations += 1
         if not all_complete:
             time.sleep(1)  # Refresh every second
     
