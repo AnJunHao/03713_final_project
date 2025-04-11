@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import yaml
+from typing import NamedTuple, List
+import time
 
 @dataclass
 class HalperConfig:
@@ -75,10 +77,15 @@ bash {halper_script} \
   -t {target_species} \
   -c {hal_file}
 
-echo "Done"
+echo "Job finished"
 """
 
-def generate_script(config: HalperConfig) -> Path:
+class GeneratedScriptOutput(NamedTuple):
+    master_script: Path
+    output_logs: list[Path]
+    error_logs: list[Path]
+
+def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
     """
     Generate a script to map the peaks of the two species to each other.
 
@@ -86,7 +93,10 @@ def generate_script(config: HalperConfig) -> Path:
         config: A HalperConfig object.
 
     Returns:
-        The path to the master script.
+        A tuple containing:
+        1. the path to the master script
+        2. a list of paths to the output logs
+        3. a list of paths to the error logs
     """
 
     # We will do four mappings:
@@ -96,6 +106,8 @@ def generate_script(config: HalperConfig) -> Path:
     # 4. species_2_organ_2_peak_file: species_2 -> species_1
     
     script_paths = []
+    output_logs = []
+    error_logs = []
     
     # Define mapping configurations
     mappings = [
@@ -149,7 +161,15 @@ def generate_script(config: HalperConfig) -> Path:
                 output_log=output_log
             ))
         script_paths.append(script)
-    
+        output_logs.append(output_log)
+        error_logs.append(error_log)
+
+        # Delete old output and error logs if they exist
+        if output_log.exists():
+            output_log.unlink()
+        if error_log.exists():
+            error_log.unlink()
+
     # Create master script to submit all jobs
     master_script = config.temp_dir / "submit_all_jobs.sh"
     with open(master_script, "w") as f:
@@ -160,9 +180,98 @@ def generate_script(config: HalperConfig) -> Path:
         f.write("echo 'All jobs submitted'\n")
     master_script.chmod(0o755)  # Make the master script executable
     
-    return master_script
+    return GeneratedScriptOutput(master_script, output_logs, error_logs)
 
-def run_halper_pipeline(config_path: Path) -> None:
+def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
+    """
+    Monitor job status by checking output and error logs.
+    
+    Args:
+        output_logs: List of paths to output log files
+        error_logs: List of paths to error log files
+        
+    Returns:
+        True when all jobs have completed successfully
+    """
+    job_statuses = {str(log): "QUEUED" for log in output_logs}
+    all_complete = False
+    
+    # Print initial job status for each job
+    print("Monitoring jobs...")
+    for out_log in output_logs:
+        job_name = out_log.name.replace(".out.txt", "")
+        print(f"📋 {job_name}: QUEUED")
+    
+    # Counter to track iterations for cursor movement
+    iterations = 0
+    
+    while not all_complete:
+        all_complete = True
+        
+        # Move cursor up to overwrite previous status lines
+        if iterations > 0:
+            for _ in range(len(output_logs)):
+                print("\033[A\033[K", end="")
+        
+        # Check and update each job's status
+        for i, (out_log, err_log) in enumerate(zip(output_logs, error_logs)):
+            job_name = out_log.name.replace(".out.txt", "")
+            status_icon = "📋"
+            status_text = "QUEUED"
+            
+            # Check if logs exist
+            if not out_log.exists() and not err_log.exists():
+                if job_statuses[str(out_log)] != "QUEUED":
+                    job_statuses[str(out_log)] = "QUEUED"
+                all_complete = False
+            
+            # Check if error log has content
+            elif err_log.exists() and err_log.stat().st_size > 0:
+                with open(err_log, 'r') as f:
+                    err_content = f.read().strip()
+                    if err_content:
+                        job_statuses[str(out_log)] = "ERROR"
+                        status_icon = "❌"
+                        status_text = "ERROR"
+            
+            # Check if output log exists and job is complete
+            elif out_log.exists():
+                if job_statuses[str(out_log)] == "QUEUED":
+                    job_statuses[str(out_log)] = "RUNNING"
+                
+                # Check if job is complete by reading last line
+                with open(out_log, 'r') as f:
+                    content = f.read().strip()
+                    if content:
+                        last_line = content.splitlines()[-1] if content.splitlines() else ""
+                        if last_line == "Job finished":
+                            job_statuses[str(out_log)] = "COMPLETED"
+                            status_icon = "✅"
+                            status_text = "COMPLETED"
+                        else:
+                            job_statuses[str(out_log)] = "RUNNING"
+                            status_icon = "🏃"
+                            status_text = "RUNNING"
+                            all_complete = False
+                    else:
+                        job_statuses[str(out_log)] = "RUNNING"
+                        status_icon = "🏃"
+                        status_text = "RUNNING"
+                        all_complete = False
+            else:
+                all_complete = False
+            
+            # Print current status
+            print(f"{status_icon} {job_name}: {status_text}")
+        
+        iterations += 1
+        if not all_complete:
+            time.sleep(1)  # Refresh every second
+    
+    print("\n🎉 All jobs completed successfully!")
+    return True
+
+def run_halper_pipeline(config_path: Path) -> bool:
     """
     Run the HALPER pipeline.
 
@@ -170,12 +279,18 @@ def run_halper_pipeline(config_path: Path) -> None:
         config: A HalperConfig object.
     
     Returns:
-        None
+        True if the pipeline was run successfully, False otherwise.
     """
     config = load_halper_config(config_path)
-    master_script = generate_script(config)
+    master_script, output_logs, error_logs = generate_script(config)
+    
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
-    if result.stderr:
-        print(f"{result.stderr}")
     if result.stdout:
         print(f"{result.stdout}")
+    if result.stderr:
+        print(f"{result.stderr}")
+        return False
+    
+    # Monitor the submitted jobs
+    print("Monitoring job status...")
+    return monitor_jobs(output_logs, error_logs)
