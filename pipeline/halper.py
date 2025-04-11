@@ -55,7 +55,7 @@ def load_halper_config(config_path: Path) -> HalperConfig:
         species_1_organ_2_peak_file=Path(config["species_1_organ_2_peak_file"]),
         species_2_organ_1_peak_file=Path(config["species_2_organ_1_peak_file"]),
         species_2_organ_2_peak_file=Path(config["species_2_organ_2_peak_file"]),
-        output_dir=Path(config["output_dir"])
+        output_dir=Path(config["halper_output_dir"]) # NOTE: Different naming! Be careful!
     )
 
 script_template = """#!/bin/bash
@@ -81,10 +81,17 @@ bash {halper_script} \
 echo "Job finished"
 """
 
+class HalperOutput(NamedTuple):
+    species_1_organ_1_to_species_2: Path
+    species_1_organ_2_to_species_2: Path
+    species_2_organ_1_to_species_1: Path
+    species_2_organ_2_to_species_1: Path
+
 class GeneratedScriptOutput(NamedTuple):
     master_script: Path
     output_logs: list[Path]
     error_logs: list[Path]
+    halper_output: HalperOutput
 
 def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
     """
@@ -109,6 +116,7 @@ def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
     script_paths = []
     output_logs = []
     error_logs = []
+    halper_output = []
     
     # Define mapping configurations
     mappings = [
@@ -170,6 +178,15 @@ def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
             output_log.unlink()
         if error_log.exists():
             error_log.unlink()
+        
+        # Determine the HALPER output file name
+        # Extract the base name from the peak file (without extension)
+        peak_base_name = peak_file.stem
+        # Format the mapping string (SourceToTarget format)
+        mapping_string = f"{source_species}To{target_species}"
+        # Construct the full output path with the fixed suffix
+        halper_output_file = config.output_dir / f"{peak_base_name}.{mapping_string}.HALPER.narrowPeak.gz"
+        halper_output.append(halper_output_file)
 
     # Create master script to submit all jobs
     master_script = config.temp_dir / "submit_all_jobs.sh"
@@ -181,7 +198,18 @@ def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
         f.write("echo 'All jobs submitted'\n")
     master_script.chmod(0o755)  # Make the master script executable
     
-    return GeneratedScriptOutput(master_script, output_logs, error_logs)
+    # Create the HalperOutput object with the expected output files
+    halper_output_result = HalperOutput(
+        species_1_organ_1_to_species_2=halper_output[0],
+        species_1_organ_2_to_species_2=halper_output[1],
+        species_2_organ_1_to_species_1=halper_output[2],
+        species_2_organ_2_to_species_1=halper_output[3]
+    )
+    
+    return GeneratedScriptOutput(master_script,
+                                 output_logs,
+                                 error_logs,
+                                 halper_output_result)
 
 def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
     """
@@ -306,7 +334,7 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
     
     return error_jobs == 0
 
-def run_halper_pipeline(config_path: Path) -> bool:
+def run_halper_pipeline(config_path: Path) -> HalperOutput:
     """
     Run the HALPER pipeline.
 
@@ -317,21 +345,24 @@ def run_halper_pipeline(config_path: Path) -> bool:
         True if the pipeline was run successfully, False otherwise.
     """
     config = load_halper_config(config_path)
-    master_script, output_logs, error_logs = generate_script(config)
-    
+    script_output = generate_script(config)
+    master_script = script_output.master_script
+    output_logs = script_output.output_logs
+    error_logs = script_output.error_logs
+    halper_output = script_output.halper_output
+
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
     if result.stdout:
         print(f"{result.stdout}")
     if result.stderr:
         print(f"{result.stderr}")
-        return False
-    
-    print("If you want to manage and monitor the jobs manually, feel free to interrupt the script.")
-    print("Interrupting the script will not stop the jobs from running.")
+        return halper_output
     
     # Monitor the submitted jobs
     try:
-        return monitor_jobs(output_logs, error_logs)
+        monitor_jobs(output_logs, error_logs)
     except KeyboardInterrupt:
         print("Keyboard interrupt detected. Jobs will still run.")
-        return False
+    
+    # Return the HALPER output
+    return halper_output
