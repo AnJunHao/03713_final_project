@@ -334,7 +334,7 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
     
     return error_jobs == 0
 
-def run_halper_pipeline(config_path: Path) -> HalperOutput:
+def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> HalperOutput:
     """
     Run the HALPER pipeline.
 
@@ -350,6 +350,9 @@ def run_halper_pipeline(config_path: Path) -> HalperOutput:
     output_logs = script_output.output_logs
     error_logs = script_output.error_logs
     halper_output = script_output.halper_output
+
+    if do_not_submit:
+        return halper_output
 
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
     if result.stdout:

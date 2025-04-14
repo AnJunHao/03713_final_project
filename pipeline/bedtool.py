@@ -12,6 +12,7 @@ class BedtoolConfig:
     organ_1: str
     organ_2: str
     output_dir: Path
+    temp_dir: Path
     
     # Peak files
     species_1_organ_1_peak_file: Path
@@ -64,6 +65,7 @@ def load_bedtool_config(config_path: Path, halper_output: HalperOutput) -> Bedto
         organ_1=config["organ_1"],
         organ_2=config["organ_2"],
         output_dir=Path(config["bedtool_output_dir"]),
+        temp_dir=Path(config["temp_dir"]),
         species_1_organ_1_peak_file=Path(config["species_1_organ_1_peak_file"]),
         species_1_organ_2_peak_file=Path(config["species_1_organ_2_peak_file"]),
         species_2_organ_1_peak_file=Path(config["species_2_organ_1_peak_file"]),
@@ -141,7 +143,7 @@ class GeneratedScriptOutput(NamedTuple):
     output_log: Path
     error_log: Path
 
-def generate_script(config: BedtoolConfig, temp_dir: Path) -> GeneratedScriptOutput:
+def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
     Generate a script to compare peak regions between species and organs.
 
@@ -152,9 +154,7 @@ def generate_script(config: BedtoolConfig, temp_dir: Path) -> GeneratedScriptOut
     Returns:
         A GeneratedScriptOutput containing paths to the script and log files.
     """
-    # Ensure temp directory exists
-    if not temp_dir.exists():
-        temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_dir = config.temp_dir
     
     # Create script path and log paths
     script_name = f"compare_{config.species_1}_{config.species_2}_regions"
@@ -190,7 +190,7 @@ def generate_script(config: BedtoolConfig, temp_dir: Path) -> GeneratedScriptOut
     
     return GeneratedScriptOutput(script_path, output_log, error_log)
 
-def run_bedtool_pipeline(config_path: Path, halper_output, temp_dir: Path) -> None:
+def run_bedtool_pipeline(config_path: Path, halper_output) -> None:
     """
     Run the bedtools comparison pipeline.
 
@@ -200,7 +200,7 @@ def run_bedtool_pipeline(config_path: Path, halper_output, temp_dir: Path) -> No
         temp_dir: Directory to store the generated script.
     """
     config = load_bedtool_config(config_path, halper_output)
-    script_output = generate_script(config, temp_dir)
+    script_output = generate_script(config)
     script_path = script_output.script
     
     print(f"Submitting job: {script_path}")

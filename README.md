@@ -1,19 +1,34 @@
 # 03713 project
 
+## 1. Setup
 
+### Clone the repository
 
-## 1. Install Required Tools
+```bash
+git clone https://github.com/yitianTracy/03713_final_project.git
+```
+
+Make sure your python version is at least 3.9.
+
+```bash
+python --version
+```
+
+Install the `pyyaml` package.
+
+```bash
+pip install pyyaml
+```
+
+### Install Required Tools
 
 Follow the instructions in the official HAL liftover postprocessing guide to install HAL, HDF5, sonLib
 
 🔗 [HAL installation instructions](https://github.com/pfenninglab/halLiftover-postprocessing/blob/master/hal_install_instructions.md)
 
-
-
 ------
 
-### 2. Mapping of chromatin regions cross species with halLiftover and HALPER (Human to mouse)
-
+## 2. Mapping of chromatin regions cross species with halLiftover and HALPER (Human to mouse)
 
  🔗 [halLiftover-postprocessing](https://github.com/pfenninglab/halLiftover-postprocessing/tree/master)
 
@@ -41,141 +56,43 @@ gunzip -c /ocean/projects/bio230007p/ikaplow/HumanAtac/Liver/peak/idr_reproducib
 
 ------
 
-### Run `halLiftover` via `sbatch` Script
+### Configure the `config.yaml` file
 
-```bash
-interact -n 4 -t 01:00:00 --mem=32gb
+```yaml
+# Base Settings
+species_1: "Human"
+species_2: "Mouse"
+organ_1: "Pancreas"
+organ_2: "Liver"
+temp_dir: "/ocean/projects/bio230007p/can1/temp"
+
+# HALPER Settings
+halper_script: "/ocean/projects/bio230007p/can1/halLiftover-postprocessing/halper_map_peak_orthologs.sh"
+hal_file: "/ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal"
+halper_output_dir: "/ocean/projects/bio230007p/can1/output/halper"
+species_1_organ_1_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/human_pancreas.idr.optimal_peak.narrowPeak"
+species_1_organ_2_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/human_liver.idr.optimal_peak.narrowPeak"
+species_2_organ_1_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/mouse_pancreas.idr.optimal_peak.narrowPeak"
+species_2_organ_2_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/mouse_liver.idr.optimal_peak.narrowPeak"
+
+# Bedtool Settings
+bedtool_output_dir: "/ocean/projects/bio230007p/can1/output/bedtool"
 ```
 
-####  Pancreas Job Script (`human_to_mouse_pancreas.job`)
-
-```bash
-#!/bin/bash
-#SBATCH -p RM-shared
-#SBATCH -t 24:00:00
-#SBATCH --ntasks-per-node=4
-
-source ~/.bashrc
-conda activate hal
-
-bash /ocean/projects/bio230007p/yma6/halLiftover-postprocessing/halper_map_peak_orthologs.sh \
-  -b /ocean/projects/bio230007p/yma6/data/idr.optimal_peak_pancreas.narrowPeak \
-  -o /ocean/projects/bio230007p/yma6/halper_result \
-  -s Human \
-  -t Mouse \
-  -c /ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal
-```
-
-Submit the job:
-
-```bash
-sbatch human_to_mouse_pancreas.job
-```
+Adjust the configurations to your own needs. Make sure the paths to the files / executables are correct. The `temp_dir` and `output_dir` will be created if they do not exist.
 
 ------
 
-####  Liver Job Script (`human_to_mouse_liver.job`)
+### Run the pipeline
 
 ```bash
-#!/bin/bash
-#SBATCH -p RM-shared
-#SBATCH -t 24:00:00
-#SBATCH --ntasks-per-node=4
-
-source ~/.bashrc
-conda activate hal
-
-bash /ocean/projects/bio230007p/yma6/halLiftover-postprocessing/halper_map_peak_orthologs.sh \
-  -b /ocean/projects/bio230007p/yma6/data/idr.optimal_peak_liver.narrowPeak \
-  -o /ocean/projects/bio230007p/yma6/halper_result \
-  -s Human \
-  -t Mouse \
-  -c /ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal
+python main.py --config config.yaml
 ```
 
-Submit the job:
-
-```bash
-sbatch human_to_mouse_liver.job
-```
-
+The pipeline will run the HALPER pipeline and the bedtools pipeline in one go.
 
 ------
-
-
 
 ## 3.  Cross-Species and Cross-Tissue Comparison of Open Chromatin Regions
 
-```
-module load bedtools/2.30.0  
-touch compare_open_regions.sh
-```
-
-
-
-```bash
-#!/bin/bash
-
-mkdir -p results
-
-HUMAN_PANCREAS="data/idr.optimal_peak_pancreas_human.narrowPeak"
-HUMAN_LIVER="data/idr.optimal_peak_liver_human.narrowPeak"
-MOUSE_PANCREAS="data/idr.optimal_peak_pancreas_mouse.narrowPeak"
-MOUSE_LIVER="data/idr.optimal_peak_liver_mouse.narrowPeak"
-
-# HALPER output
-HP_TO_MOUSE="halper_result/idr.optimal_peak_pancreas.HumanToMouse.HALPER.narrowPeak"
-HL_TO_MOUSE="halper_result/idr.optimal_peak_liver.HumanToMouse.HALPER.narrowPeak"
-
-echo "Comparing within-species (cross-tissue) overlaps..."
-
-bedtools intersect -a "$HUMAN_PANCREAS" -b "$HUMAN_LIVER" -u > results/human_shared_peaks.bed
-bedtools intersect -a "$HUMAN_PANCREAS" -b "$HUMAN_LIVER" -v > results/human_pancreas_specific.bed
-bedtools intersect -a "$HUMAN_LIVER" -b "$HUMAN_PANCREAS" -v > results/human_liver_specific.bed
-
-bedtools intersect -a "$MOUSE_PANCREAS" -b "$MOUSE_LIVER" -u > results/mouse_shared_peaks.bed
-bedtools intersect -a "$MOUSE_PANCREAS" -b "$MOUSE_LIVER" -v > results/mouse_pancreas_specific.bed
-bedtools intersect -a "$MOUSE_LIVER" -b "$MOUSE_PANCREAS" -v > results/mouse_liver_specific.bed
-
-echo "Comparing cross-species conservation..."
-
-bedtools intersect -a "$HP_TO_MOUSE" -b "$MOUSE_PANCREAS" -u > results/human_pancreas_to_mouse_open.bed
-bedtools intersect -a "$HP_TO_MOUSE" -b "$MOUSE_PANCREAS" -v > results/human_pancreas_to_mouse_closed.bed
-
-bedtools intersect -a "$HL_TO_MOUSE" -b "$MOUSE_LIVER" -u > results/human_liver_to_mouse_open.bed
-bedtools intersect -a "$HL_TO_MOUSE" -b "$MOUSE_LIVER" -v > results/human_liver_to_mouse_closed.bed
-
-echo "Summary:"
-for f in results/*.bed; do
-    echo "$(basename $f): $(wc -l < $f) peaks"
-done
-
-> /ocean/projects/bio230007p/yma6/halper_result/idr.optimal_peak_pancreas.HumanToMouse.HALPER.narrowPeak
-```
-
-```
-Summary:
-human_liver_specific.bed: 60831 peaks
-human_liver_to_mouse_closed.bed: 41778 peaks
-human_liver_to_mouse_open.bed: 37002 peaks
-human_pancreas_specific.bed: 62075 peaks
-human_pancreas_to_mouse_closed.bed: 54012 peaks
-human_pancreas_to_mouse_open.bed: 43066 peaks
-human_shared_peaks.bed: 122707 peaks
-mouse_liver_specific.bed: 67512 peaks
-mouse_pancreas_specific.bed: 25967 peaks
-mouse_shared_peaks.bed: 55612 peaks
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
+TODO
