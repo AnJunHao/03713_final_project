@@ -116,7 +116,7 @@ def bedtool_preprocess(config_path: Path) -> None:
         config[entry] = str(halper_file)
     
     # 4. Extract the first 3 columns of the HALPER files
-    cleaned_dir = Path(config["bedtool_output_dir"]) / "cleaned"
+    cleaned_dir = Path(config["bedtool_preprocess_output_dir"])
     cleaned_dir.mkdir(parents=True, exist_ok=True)
     for entry in ["species_1_organ_1_to_species_2",
                   "species_1_organ_2_to_species_2",
