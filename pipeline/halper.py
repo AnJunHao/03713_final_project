@@ -259,14 +259,19 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     update_config(config_path, halper_output)
 
     if do_not_submit:
+        print("HALPER pipeline is skipped!")
         return True
     
     # Delete old output and error logs if they exist
+    old_log_count = 0
     for log in output_logs + error_logs:
         if log.exists():
             log.unlink()
-            print(f"Deleted old log file: {log}")
+            old_log_count += 1
+    if old_log_count > 0:
+        print(f"Deleted {old_log_count} old log files")
 
+    # Submit the jobs
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
     if result.stdout:
         print(f"{result.stdout}")

@@ -11,11 +11,20 @@ if __name__ == "__main__":
         help="Path to the config .yaml file (default: config.yaml)")
     args = parser.parse_args()
     
-    print("Running HALPER pipeline...")
+    print("="*100)
+    print("Step 1: Running HALPER pipeline...")
     success = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
-    print("HALPER pipeline complete!")
-    # print(f"HALPER output files: {halper_output}")
+    print("Step 1: HALPER pipeline complete!")
+
+    print("="*100)
+    print("Step 2: Preprocessing files for bedtools pipeline...")
+    pipeline.bedtool_preprocess(args.config)
+    print("Step 2: Bedtools preprocess complete!")
     
-    print("\nRunning cross-species ortholog open vs closed pipeline...")
+    print("="*100)
+    print("Step 3: Running cross-species ortholog open vs closed pipeline...")
     success = pipeline.run_cross_species_ortholog_open_vs_closed_pipeline(args.config)
-    print("Cross-species ortholog open vs closed pipeline complete!")
+    print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
+
+    print("="*100)
+    print("Step 4: Running cross-tissues region shared vs species pipeline...")
