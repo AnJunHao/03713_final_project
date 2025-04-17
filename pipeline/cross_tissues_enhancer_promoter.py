@@ -4,11 +4,10 @@ from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
-import yaml
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 0:30:00
+#SBATCH -t 0:10:00
 #SBATCH --ntasks-per-node=1
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
@@ -63,6 +62,53 @@ echo "Processing {species} shared enhancers and promoters between tissues"
 
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
+
+# Wait for required files to be available before proceeding
+echo "Checking if required files exist..."
+max_wait_time=600  # Maximum wait time in seconds (10 minutes)
+wait_interval=1    # Check every 1 seconds
+elapsed_time=0
+
+while [ $elapsed_time -lt $max_wait_time ]; do
+    all_files_exist=true
+    
+    # Check tissue1 files
+    if [ ! -f {tissue1_promoters} ]; then
+        echo "Waiting for file: {tissue1_promoters} (not found)"
+        all_files_exist=false
+    fi
+    if [ ! -f {tissue1_enhancers} ]; then
+        echo "Waiting for file: {tissue1_enhancers} (not found)"
+        all_files_exist=false
+    fi
+    
+    # Check tissue2 files
+    if [ ! -f {tissue2_promoters} ]; then
+        echo "Waiting for file: {tissue2_promoters} (not found)"
+        all_files_exist=false
+    fi
+    if [ ! -f {tissue2_enhancers} ]; then
+        echo "Waiting for file: {tissue2_enhancers} (not found)"
+        all_files_exist=false
+    fi
+    
+    # If all files exist, proceed
+    if [ "$all_files_exist" = true ]; then
+        echo "All required files found. Proceeding with analysis."
+        break
+    fi
+    
+    # Wait before checking again
+    echo "Waiting for files to be created... (${elapsed_time}s elapsed)"
+    sleep $wait_interval
+    elapsed_time=$((elapsed_time + wait_interval))
+done
+
+# If we've hit the maximum wait time, exit with an error
+if [ $elapsed_time -ge $max_wait_time ]; then
+    echo "Error: Maximum wait time exceeded. Required files not found within 10 minutes." >&2
+    exit 1
+fi
 
 # Step 1: Find shared promoters between tissues
 echo "[STEP 1] Finding shared promoters"
