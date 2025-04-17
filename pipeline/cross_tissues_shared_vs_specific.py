@@ -192,7 +192,7 @@ def run_cross_tissues_region_shared_vs_specific_pipeline(config_path: Path) -> b
     Args:
         config_path: Path to the configuration file.
     """
-    config = load_bedtool_config(config_path)
+    config = load_bedtool_config(config_path, "cross_tissues_shared_vs_specific_output_dir")
     script_output = generate_script(config)
     script_path = script_output.script
 

@@ -55,3 +55,6 @@ if __name__ == "__main__":
         print("Step 4: Cross-tissues region shared vs species pipeline complete!")
     else:
         print("Step 4: Skipped cross-tissues region shared vs species pipeline")
+
+    print("="*100)
+    print("Step 5: Running within-species enhancers vs promoters pipeline...")

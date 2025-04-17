@@ -173,7 +173,7 @@ def run_cross_species_ortholog_open_vs_closed_pipeline(config_path: Path) -> boo
     Args:
         config_path: Path to the configuration file.
     """
-    config = load_bedtool_config(config_path)
+    config = load_bedtool_config(config_path, "cross_species_open_vs_closed_output_dir")
     script_output = generate_script(config)
     script_path = script_output.script
 

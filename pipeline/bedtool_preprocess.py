@@ -51,7 +51,7 @@ class BedtoolConfig:
             self.output_dir.mkdir(parents=True, exist_ok=True)
             print(f"Created output directory {self.output_dir}")
 
-def load_bedtool_config(config_path: Path) -> BedtoolConfig:
+def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConfig:
     """
     Load bedtool configuration from a YAML file and a HalperOutput object.
     
@@ -69,7 +69,7 @@ def load_bedtool_config(config_path: Path) -> BedtoolConfig:
         species_2=config["species_2"],
         organ_1=config["organ_1"],
         organ_2=config["organ_2"],
-        output_dir=Path(config["bedtool_output_dir"]),
+        output_dir=Path(config[output_dir_entry]),
         temp_dir=Path(config["temp_dir"]),
         species_1_organ_1_peak_file=Path(config["species_1_organ_1_peak_file_cleaned"]),
         species_1_organ_2_peak_file=Path(config["species_1_organ_2_peak_file_cleaned"]),
