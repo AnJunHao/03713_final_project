@@ -118,10 +118,10 @@ def monitor_jobs(output_logs: list[Path],
     
     # Print final status with appropriate emoji
     if error_jobs == 0:
-        print(f"\n🎉 All {total_jobs} jobs completed successfully in {elapsed_str[15:]}")
+        print(f"🎉 All {total_jobs} jobs completed successfully in {elapsed_str[17:]}")
     elif completed_jobs == 0:
-        print(f"\n❌ All {total_jobs} jobs failed")
+        print(f"❌ All {total_jobs} jobs failed")
     else:
-        print(f"\n⚠️ {completed_jobs}/{total_jobs} jobs completed, {error_jobs} jobs failed")
+        print(f"⚠️ {completed_jobs}/{total_jobs} jobs completed, {error_jobs} jobs failed")
     
     return error_jobs == 0

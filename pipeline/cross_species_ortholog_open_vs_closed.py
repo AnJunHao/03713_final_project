@@ -3,6 +3,7 @@ import subprocess
 from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
+from tabulate import tabulate
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
@@ -133,6 +134,9 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
         output_logs: List of paths to output log files
         output_csv: Path to save the CSV file
     """
+    data = []
+    headers = ["Prefix", "Total_Lifted_Peaks", "Open_Peaks", "Closed_Peaks"]
+    
     with open(output_csv, 'w') as f:
         f.write("Prefix,Total_Lifted_Peaks,Open_Peaks,Closed_Peaks\n")
         
@@ -156,8 +160,11 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
                         closed_peaks = line.strip().split()[-1]
             
             f.write(f"{prefix},{total_lifted},{open_peaks},{closed_peaks}\n")
+            data.append([prefix, total_lifted, open_peaks, closed_peaks])
     
     print(f"Peak counts summary saved to {output_csv}")
+    print("Peak Counts Summary:")
+    print(tabulate(data, headers=headers, tablefmt="grid"))
 
 def run_cross_species_ortholog_open_vs_closed_pipeline(config_path: Path) -> bool:
     """
