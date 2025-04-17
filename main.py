@@ -16,6 +16,6 @@ if __name__ == "__main__":
     print("HALPER pipeline complete!")
     # print(f"HALPER output files: {halper_output}")
     
-    print("\nRunning bedtools comparison pipeline...")
+    print("\nRunning cross-species ortholog open vs closed pipeline...")
     success = pipeline.run_cross_species_ortholog_open_vs_closed_pipeline(args.config)
-    print("Bedtools comparison pipeline complete!")
+    print("Cross-species ortholog open vs closed pipeline complete!")

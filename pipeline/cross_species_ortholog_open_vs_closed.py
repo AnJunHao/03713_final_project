@@ -73,15 +73,15 @@ def load_bedtool_config(config_path: Path) -> BedtoolConfig:
         organ_2=config["organ_2"],
         output_dir=Path(config["bedtool_output_dir"]),
         temp_dir=Path(config["temp_dir"]),
-        species_1_organ_1_peak_file=Path(config["species_1_organ_1_peak_file"]),
-        species_1_organ_2_peak_file=Path(config["species_1_organ_2_peak_file"]),
-        species_2_organ_1_peak_file=Path(config["species_2_organ_1_peak_file"]),
-        species_2_organ_2_peak_file=Path(config["species_2_organ_2_peak_file"]),
+        species_1_organ_1_peak_file=Path(config["species_1_organ_1_peak_file_cleaned"]),
+        species_1_organ_2_peak_file=Path(config["species_1_organ_2_peak_file_cleaned"]),
+        species_2_organ_1_peak_file=Path(config["species_2_organ_1_peak_file_cleaned"]),
+        species_2_organ_2_peak_file=Path(config["species_2_organ_2_peak_file_cleaned"]),
         # Use the HalperOutput object for mapping files
-        species_1_organ_1_to_species_2=Path(config["species_1_organ_1_to_species_2"]),
-        species_1_organ_2_to_species_2=Path(config["species_1_organ_2_to_species_2"]),
-        species_2_organ_1_to_species_1=Path(config["species_2_organ_1_to_species_1"]),
-        species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1"]),
+        species_1_organ_1_to_species_2=Path(config["species_1_organ_1_to_species_2_cleaned"]),
+        species_1_organ_2_to_species_2=Path(config["species_1_organ_2_to_species_2_cleaned"]),
+        species_2_organ_1_to_species_1=Path(config["species_2_organ_1_to_species_1_cleaned"]),
+        species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
     )
 
 def bedtool_preprocess(config_path: Path) -> None:
