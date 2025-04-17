@@ -8,6 +8,8 @@
 git clone https://github.com/yitianTracy/03713_final_project.git
 ```
 
+### Python Environment
+
 Make sure your python version is at least 3.9.
 
 ```bash
