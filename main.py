@@ -14,8 +14,8 @@ if __name__ == "__main__":
     print("Running HALPER pipeline...")
     halper_output = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
     print("HALPER pipeline complete!")
-    print(f"HALPER output files: {halper_output}")
+    # print(f"HALPER output files: {halper_output}")
     
-    print("\nRunning bedtools comparison pipeline...")
-    pipeline.run_bedtool_pipeline(args.config, halper_output)
-    print("Bedtools comparison pipeline submitted!")
+    # print("\nRunning bedtools comparison pipeline...")
+    # pipeline.run_bedtool_pipeline(args.config, halper_output)
+    # print("Bedtools comparison pipeline submitted!")

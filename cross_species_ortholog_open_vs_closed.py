@@ -1,15 +1,19 @@
 import subprocess
-import os
 
-def cross_species_ortholog_open_vs_closed (tissue, direction, species_from, species_to):
+def cross_species_ortholog_open_vs_closed (
+        tissue: str,
+        direction: str,
+        species_from: str,
+        species_to: str
+    ):
     """
-Identify the open chromatin regions in a given species whose orthologs in the other species are open or closed.
+    Identify the open chromatin regions in a given species whose orthologs in the other species are open or closed.
     
-    Parameters:
-    - tissue (str): 'liver' or 'pancreas'
-    - direction (str): 'HumanToMouse' or 'MouseToHuman'
-    - species_from (str): 'human' or 'mouse' (source species whose open chromatin peaks were lifted to the other species using halLifter and HALPER)
-    - species_to (str): 'mouse' or 'human' (target species used to determine whether the orthologous region is open or closed)
+    Args:
+        tissue (str): 'liver' or 'pancreas'
+        direction (str): 'HumanToMouse' or 'MouseToHuman'
+        species_from (str): 'human' or 'mouse' (source species whose open chromatin peaks were lifted to the other species using halLifter and HALPER)
+        species_to (str): 'mouse' or 'human' (target species used to determine whether the orthologous region is open or closed)
     """
     # Construct filenames
     halper_file = f"idr.optimal_peak_{tissue}.{direction}.HALPER.narrowPeak"

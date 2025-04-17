@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import yaml
-from typing import NamedTuple, List
+from typing import NamedTuple
 import time
 from datetime import datetime
 
@@ -211,7 +211,7 @@ def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
                                  error_logs,
                                  halper_output_result)
 
-def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
+def monitor_jobs(output_logs: list[Path], error_logs: list[Path]) -> bool:
     """
     Monitor job status by checking output and error logs.
     
@@ -334,7 +334,35 @@ def monitor_jobs(output_logs: List[Path], error_logs: List[Path]) -> bool:
     
     return error_jobs == 0
 
-def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> HalperOutput:
+def update_config(config_path: Path, halper_output: HalperOutput) -> None:
+    """
+    Update the config file with the HalperOutput entries.
+    
+    Args:
+        config_path: Path to the config file
+        halper_output: HalperOutput object containing output file paths
+    """
+    # Create backup of original config file
+    backup_path = Path(f"{config_path}.backup")
+    with open(config_path, "r") as src:
+        with open(backup_path, "w") as dst:
+            dst.write(src.read())
+    
+    # Load existing config
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    
+    # Add HalperOutput entries to config
+    config["species_1_organ_1_to_species_2"] = str(halper_output.species_1_organ_1_to_species_2)
+    config["species_1_organ_2_to_species_2"] = str(halper_output.species_1_organ_2_to_species_2)
+    config["species_2_organ_1_to_species_1"] = str(halper_output.species_2_organ_1_to_species_1)
+    config["species_2_organ_2_to_species_1"] = str(halper_output.species_2_organ_2_to_species_1)
+    
+    # Write updated config back to file
+    with open(config_path, "w") as f:
+        yaml.safe_dump(config, f, default_flow_style=False)
+
+def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> None:
     """
     Run the HALPER pipeline.
 
@@ -342,7 +370,7 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> Halpe
         config: A HalperConfig object.
     
     Returns:
-        True if the pipeline was run successfully, False otherwise.
+        True if all jobs completed successfully, False otherwise.
     """
     config = load_halper_config(config_path)
     script_output = generate_script(config)
@@ -350,16 +378,17 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> Halpe
     output_logs = script_output.output_logs
     error_logs = script_output.error_logs
     halper_output = script_output.halper_output
+    update_config(config_path, halper_output)
 
     if do_not_submit:
-        return halper_output
+        return
 
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
     if result.stdout:
         print(f"{result.stdout}")
     if result.stderr:
         print(f"{result.stderr}")
-        return halper_output
+        return
     
     # Monitor the submitted jobs
     try:
@@ -367,5 +396,4 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> Halpe
     except KeyboardInterrupt:
         print("Keyboard interrupt detected. Jobs will still run.")
     
-    # Return the HALPER output
-    return halper_output
+    return
