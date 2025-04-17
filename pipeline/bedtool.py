@@ -154,9 +154,7 @@ script_template = """#!/bin/bash
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
 
-module load anaconda3
-conda init
-source ~/.bashrc
+module load bedtools
 
 echo "Processing {prefix}: {halper_file} vs {native_file}"
 
@@ -254,7 +252,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         error_logs.append(error_log)
     
     # Create master script to submit all jobs
-    master_script = config.temp_dir / "submit_all_bedtool_jobs.job"
+    master_script = config.temp_dir / "submit_all_bedtool_jobs.sh"
     with open(master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
         f.write("echo 'Submitting all bedtool jobs...'\n")
