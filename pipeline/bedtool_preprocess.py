@@ -100,13 +100,13 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_1_tss_file=Path(config["species_1_TSS_file"]),
         species_2_tss_file=Path(config["species_2_TSS_file"]),
         species_1_to_species_2_organ_1_conserved=Path(config["species_1_to_species_2_organ_1_conserved"])\
-            if config["species_1_to_species_2_organ_1_conserved"] else None,
+            if "species_1_to_species_2_organ_1_conserved" in config else None,
         species_1_to_species_2_organ_2_conserved=Path(config["species_1_to_species_2_organ_2_conserved"])\
-            if config["species_1_to_species_2_organ_2_conserved"] else None,
+            if "species_1_to_species_2_organ_2_conserved" in config else None,
         species_2_to_species_1_organ_1_conserved=Path(config["species_2_to_species_1_organ_1_conserved"])\
-            if config["species_2_to_species_1_organ_1_conserved"] else None,
+            if "species_2_to_species_1_organ_1_conserved" in config else None,
         species_2_to_species_1_organ_2_conserved=Path(config["species_2_to_species_1_organ_2_conserved"])\
-            if config["species_2_to_species_1_organ_2_conserved"] else None,
+            if "species_2_to_species_1_organ_2_conserved" in config else None,
     )
 
 def bedtool_preprocess(config_path: Path) -> None:
