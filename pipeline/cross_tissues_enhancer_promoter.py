@@ -51,7 +51,7 @@ echo "Job finished"
 
 shared_script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 0:20:00
+#SBATCH -t 0:10:00
 #SBATCH --ntasks-per-node=1
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
@@ -62,53 +62,6 @@ echo "Processing {species} shared enhancers and promoters between tissues"
 
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
-
-# Wait for required files to be available before proceeding
-echo "Checking if required files exist..."
-max_wait_time=600  # Maximum wait time in seconds (10 minutes)
-wait_interval=1    # Check every 1 seconds
-elapsed_time=0
-
-while [ $elapsed_time -lt $max_wait_time ]; do
-    all_files_exist=true
-    
-    # Check tissue1 files
-    if [ ! -f {tissue1_promoters} ]; then
-        echo "Waiting for file: {tissue1_promoters} (not found)"
-        all_files_exist=false
-    fi
-    if [ ! -f {tissue1_enhancers} ]; then
-        echo "Waiting for file: {tissue1_enhancers} (not found)"
-        all_files_exist=false
-    fi
-    
-    # Check tissue2 files
-    if [ ! -f {tissue2_promoters} ]; then
-        echo "Waiting for file: {tissue2_promoters} (not found)"
-        all_files_exist=false
-    fi
-    if [ ! -f {tissue2_enhancers} ]; then
-        echo "Waiting for file: {tissue2_enhancers} (not found)"
-        all_files_exist=false
-    fi
-    
-    # If all files exist, proceed
-    if [ "$all_files_exist" = true ]; then
-        echo "All required files found. Proceeding with analysis."
-        break
-    fi
-    
-    # Wait before checking again
-    echo "Waiting for files to be created... (${{elapsed_time}}s elapsed)"
-    sleep $wait_interval
-    elapsed_time=$((elapsed_time + wait_interval))
-done
-
-# If we've hit the maximum wait time, exit with an error
-if [ $elapsed_time -ge $max_wait_time ]; then
-    echo "Error: Maximum wait time exceeded. Required files not found within 10 minutes." >&2
-    exit 1
-fi
 
 # Step 1: Find shared promoters between tissues
 echo "[STEP 1] Finding shared promoters"
@@ -143,6 +96,8 @@ class GeneratedScriptOutput(NamedTuple):
     script: Path
     output_logs: list[Path]
     error_logs: list[Path]
+    individual_scripts: list[Path]
+    shared_scripts: list[Path]
 
 def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
@@ -158,7 +113,8 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     assert config.species_1_tss_file is not None, "species_1_tss_file is required but not provided in config"
     assert config.species_2_tss_file is not None, "species_2_tss_file is required but not provided in config"
     
-    script_paths: list[Path] = []
+    individual_scripts: list[Path] = []
+    shared_scripts: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
     
@@ -212,7 +168,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
                 output_log=output_log
             ))
         
-        script_paths.append(script_path)
+        individual_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
     
@@ -253,7 +209,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
                 output_log=output_log
             ))
         
-        script_paths.append(script_path)
+        shared_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
     
@@ -262,7 +218,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     with open(master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
         f.write("echo 'Submitting all enhancer-promoter classification jobs...'\n")
-        for script in script_paths:
+        for script in individual_scripts + shared_scripts:
             f.write(f"sbatch {script}\n")
         f.write("echo 'All jobs submitted'\n")
     
@@ -271,7 +227,9 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     return GeneratedScriptOutput(
         script=master_script,
         output_logs=output_logs,
-        error_logs=error_logs
+        error_logs=error_logs,
+        individual_scripts=individual_scripts,
+        shared_scripts=shared_scripts
     )
 
 def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) -> None:
@@ -403,7 +361,6 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     config = load_bedtool_config(config_path, "cross_tissues_enhancers_vs_promoters_output_dir")
     
     script_output = generate_script(config)
-    script_path = script_output.script
     
     # Clean old output and error logs
     old_log_count = 0
@@ -414,30 +371,59 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     if old_log_count > 0:
         print(f"Deleted {old_log_count} old log files")
     
-    # Submit the jobs
-    result = subprocess.run(["bash", str(script_path)], check=True, capture_output=True, text=True)
+    # Split log lists for monitoring
+    individual_output_logs = script_output.output_logs[:4]  # First 4 are individual tissues
+    individual_error_logs = script_output.error_logs[:4]
+    shared_output_logs = script_output.output_logs[4:]      # Last 2 are shared analyses
+    shared_error_logs = script_output.error_logs[4:]
     
-    if result.stdout:
-        print(f"{result.stdout}")
-    if result.stderr:
-        print(f"{result.stderr}")
+    # Phase 1: Submit individual tissue jobs
+    print("Phase 1: Submitting individual tissue jobs...")
+    for script in script_output.individual_scripts:
+        result = subprocess.run(["sbatch", str(script)], check=True, capture_output=True, text=True)
+        if result.stdout:
+            print(f"{result.stdout}")
+        if result.stderr:
+            print(f"{result.stderr}")
+    
+    # Monitor Phase 1 jobs
+    try:
+        print("Waiting for individual tissue jobs to complete...")
+        phase1_success = monitor_jobs(individual_output_logs, individual_error_logs)
+    except KeyboardInterrupt:
+        print("Keyboard interrupt detected. Individual tissue jobs will still run.")
+        raise KeyboardInterrupt
+    
+    # Only proceed to Phase 2 if Phase 1 was successful
+    if not phase1_success:
+        print("Individual tissue jobs failed. Skipping shared analysis jobs.")
         return False
     
-    # Monitor the submitted jobs
+    # Phase 2: Submit shared jobs
+    print("\nPhase 2: Submitting shared analysis jobs...")
+    for script in script_output.shared_scripts:
+        result = subprocess.run(["sbatch", str(script)], check=True, capture_output=True, text=True)
+        if result.stdout:
+            print(f"{result.stdout}")
+        if result.stderr:
+            print(f"{result.stderr}")
+    
+    # Monitor Phase 2 jobs
     try:
-        success = monitor_jobs(script_output.output_logs, script_output.error_logs)
+        print("Waiting for shared analysis jobs to complete...")
+        phase2_success = monitor_jobs(shared_output_logs, shared_error_logs)
     except KeyboardInterrupt:
-        print("Keyboard interrupt detected. Jobs will still run.")
-        success = False
+        print("Keyboard interrupt detected. Shared analysis jobs will still run.")
+        raise KeyboardInterrupt
     
     # If jobs completed successfully, create summary CSVs
-    if success:
+    if phase1_success and phase2_success:
         # Create enhancer-promoter counts summary
         csv_output = config.output_dir / f"enhancer_promoter_counts_summary.csv"
-        extract_enhancer_promoter_counts(script_output.output_logs, csv_output)
+        extract_enhancer_promoter_counts(individual_output_logs, csv_output)
         
         # Create shared counts summary
         shared_csv_output = config.output_dir / f"shared_enhancer_promoter_counts_summary.csv"
-        extract_shared_counts(script_output.output_logs, shared_csv_output)
+        extract_shared_counts(shared_output_logs, shared_csv_output)
     
-    return success
+    return phase1_success and phase2_success

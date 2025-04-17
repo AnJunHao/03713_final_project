@@ -219,7 +219,7 @@ def run_cross_tissues_shared_vs_specific_pipeline(config_path: Path) -> bool:
         success = monitor_jobs(script_output.output_logs, script_output.error_logs)
     except KeyboardInterrupt:
         print("Keyboard interrupt detected. Jobs will still run.")
-        success = False
+        raise KeyboardInterrupt
     
     # If jobs completed successfully, create a summary CSV
     if success:

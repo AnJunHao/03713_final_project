@@ -34,6 +34,7 @@ if __name__ == "__main__":
             success = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
         else:
             print("Step 1: Skipped updating the config with HALPER output")
+            success = True
 
     print("="*100)
     print("Step 2: Preprocessing files for bedtools pipeline...")

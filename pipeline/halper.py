@@ -283,6 +283,6 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
         success = monitor_jobs(output_logs, error_logs)
     except KeyboardInterrupt:
         print("Keyboard interrupt detected. Jobs will still run.")
-        success = False
+        raise KeyboardInterrupt
     
     return success
