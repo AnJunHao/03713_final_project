@@ -262,14 +262,10 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
         return True
     
     # Delete old output and error logs if they exist
-    for output_log in output_logs:
-        if output_log.exists():
-            output_log.unlink()
-            print(f"Deleted old output log {output_log}")
-    for error_log in error_logs:
-        if error_log.exists():
-            error_log.unlink()
-            print(f"Deleted old error log {error_log}")
+    for log in output_logs + error_logs:
+        if log.exists():
+            log.unlink()
+            print(f"Deleted old log file: {log}")
 
     result = subprocess.run(["bash", str(master_script)], check=True, capture_output=True, text=True)
     if result.stdout:

@@ -279,6 +279,12 @@ def run_bedtool_pipeline(config_path: Path) -> bool:
     config = load_bedtool_config(config_path)
     script_output = generate_script(config)
     script_path = script_output.script
+
+    # Clean old output err logs
+    for log in script_output.output_logs + script_output.error_logs:
+        if log.exists():
+            log.unlink()
+            print(f"Deleted old log file: {log}")
     
     print(f"Submitting jobs: {script_path}")
     result = subprocess.run(["bash", str(script_path)], check=True, capture_output=True, text=True)
