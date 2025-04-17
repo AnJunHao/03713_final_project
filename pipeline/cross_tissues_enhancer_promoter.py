@@ -99,7 +99,7 @@ while [ $elapsed_time -lt $max_wait_time ]; do
     fi
     
     # Wait before checking again
-    echo "Waiting for files to be created... (${elapsed_time}s elapsed)"
+    echo "Waiting for files to be created... (${{elapsed_time}}s elapsed)"
     sleep $wait_interval
     elapsed_time=$((elapsed_time + wait_interval))
 done
