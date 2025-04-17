@@ -28,3 +28,5 @@ if __name__ == "__main__":
 
     print("="*100)
     print("Step 4: Running cross-tissues region shared vs species pipeline...")
+    success = pipeline.run_cross_tissues_region_shared_vs_specific_pipeline(args.config)
+    print("Step 4: Cross-tissues region shared vs species pipeline complete!")

@@ -135,10 +135,10 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Prefix", "Total_Lifted_Peaks", "Open_Peaks", "Closed_Peaks"]
+    headers = ["Job", "Total_Lifted_Peaks", "Open_Peaks", "Closed_Peaks"]
     
     with open(output_csv, 'w') as f:
-        f.write("Prefix,Total_Lifted_Peaks,Open_Peaks,Closed_Peaks\n")
+        f.write("Job,Total_Lifted_Peaks,Open_Peaks,Closed_Peaks\n")
         
         for log_file in output_logs:
             if not log_file.exists():

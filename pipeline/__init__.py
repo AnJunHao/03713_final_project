@@ -1,4 +1,8 @@
 from .halper import run_halper_pipeline
 from .cross_species_ortholog_open_vs_closed import run_cross_species_ortholog_open_vs_closed_pipeline
 from .bedtool_preprocess import bedtool_preprocess
-__all__ = ["run_halper_pipeline", "run_cross_species_ortholog_open_vs_closed_pipeline"]
+from .cross_tissues_region_shared_vs_specific import run_cross_tissues_region_shared_vs_specific_pipeline
+__all__ = ["run_halper_pipeline",
+           "bedtool_preprocess",
+           "run_cross_species_ortholog_open_vs_closed_pipeline",
+           "run_cross_tissues_region_shared_vs_specific_pipeline"]
