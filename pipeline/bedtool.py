@@ -251,7 +251,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         error_logs.append(error_log)
     
     # Create master script to submit all jobs
-    master_script = config.temp_dir / "submit_all_bedtool_jobs.sh"
+    master_script = config.temp_dir / "submit_all_bedtool_jobs.job"
     with open(master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
         f.write("echo 'Submitting all bedtool jobs...'\n")
@@ -280,7 +280,7 @@ def run_bedtool_pipeline(config_path: Path) -> bool:
     script_path = script_output.script
     
     print(f"Submitting jobs: {script_path}")
-    result = subprocess.run(["bash", str(script_path)], check=True, capture_output=True, text=True)
+    result = subprocess.run(["sbatch", str(script_path)], check=True, capture_output=True, text=True)
     
     if result.stdout:
         print(f"Job submission output: {result.stdout}")
