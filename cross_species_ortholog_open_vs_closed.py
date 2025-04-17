@@ -38,7 +38,7 @@ def cross_species_ortholog_open_vs_closed (
         subprocess.run(["bedtools", "intersect", "-a", cleaned_halper_file, "-b", native_file, "-v"], stdout=out)
 
     # Step 4: Count peaks
-    print("\n[STEP 4] Peak counts:")
+    print("[STEP 4] Peak counts:")
     def count_lines(file): return int(subprocess.check_output(["wc", "-l", file]).decode().split()[0])
     
     lifted_total = count_lines(cleaned_halper_file)

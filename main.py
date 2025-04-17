@@ -12,7 +12,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     print("Running HALPER pipeline...")
-    halper_output = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
+    success = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
     print("HALPER pipeline complete!")
     # print(f"HALPER output files: {halper_output}")
     
