@@ -58,6 +58,6 @@ if __name__ == "__main__":
         print("Step 4: Skipped cross-tissues region shared vs species pipeline")
 
     print("="*100)
-    print("Step 5: Running within-species enhancers vs promoters pipeline...")
+    print("Step 5: Running cross-tissues (within-species) enhancers vs promoters pipeline...")
     success = pipeline.run_cross_tissues_enhancer_promoter_pipeline(args.config)
-    print("Step 5: Cross-tissues enhancers vs promoters pipeline complete!")
+    print("Step 5: Cross-tissues (within-species) enhancers vs promoters pipeline complete!")

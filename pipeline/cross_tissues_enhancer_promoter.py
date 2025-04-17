@@ -86,11 +86,10 @@ echo "Job finished"
 """
 
 class GeneratedScriptOutput(NamedTuple):
-    script: Path
+    individual_master_script: Path
+    shared_master_script: Path
     output_logs: list[Path]
     error_logs: list[Path]
-    individual_scripts: list[Path]
-    shared_scripts: list[Path]
 
 def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
@@ -207,22 +206,31 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         error_logs.append(error_log)
     
     # Create master script to submit all jobs
-    master_script = config.temp_dir / "submit_all_enhancer_promoter_jobs.sh"
-    with open(master_script, "w") as f:
+    individual_master_script = config.temp_dir / "submit_all_individual_enhancer_promoter_jobs.sh"
+    with open(individual_master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
-        f.write("echo 'Submitting all enhancer-promoter classification jobs...'\n")
-        for script in individual_scripts + shared_scripts:
+        f.write("echo 'Submitting all individual enhancer-promoter classification jobs...'\n")
+        for script in individual_scripts:
             f.write(f"sbatch {script}\n")
         f.write("echo 'All jobs submitted'\n")
     
-    master_script.chmod(0o755)  # Make the master script executable
+    individual_master_script.chmod(0o755)  # Make the master script executable
+
+    shared_master_script = config.temp_dir / "submit_all_shared_enhancer_promoter_jobs.sh"
+    with open(shared_master_script, "w") as f:
+        f.write("#!/bin/bash\n\n")
+        f.write("echo 'Submitting all shared enhancer-promoter classification jobs...'\n")
+        for script in shared_scripts:
+            f.write(f"sbatch {script}\n")
+        f.write("echo 'All jobs submitted'\n")
     
+    shared_master_script.chmod(0o755)  # Make the master script executable
+
     return GeneratedScriptOutput(
-        script=master_script,
+        individual_master_script=individual_master_script,
+        shared_master_script=shared_master_script,
         output_logs=output_logs,
         error_logs=error_logs,
-        individual_scripts=individual_scripts,
-        shared_scripts=shared_scripts
     )
 
 def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) -> None:
@@ -319,7 +327,7 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
             data.append([species, shared_promoters, shared_enhancers])
     
     print(f"Shared enhancer-promoter counts summary saved to {output_csv}")
-    print("Shared Enhancer-Promoter Counts Summary:")
+    print("Shared (within-species, cross-tissues) Enhancer-Promoter Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
 def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
@@ -353,16 +361,16 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     
     # Phase 1: Submit individual tissue jobs
     print("Phase 1: Submitting individual tissue jobs...")
-    for script in script_output.individual_scripts:
-        result = subprocess.run(["sbatch", str(script)], check=True, capture_output=True, text=True)
-        if result.stdout:
-            print(f"{result.stdout}")
-        if result.stderr:
-            print(f"{result.stderr}")
+    result = subprocess.run(["bash", str(script_output.individual_master_script)],
+                            check=True, capture_output=True, text=True)
+    if result.stdout:
+        print(f"{result.stdout}")
+    if result.stderr:
+        print(f"{result.stderr}")
+        return False
     
     # Monitor Phase 1 jobs
     try:
-        print("Waiting for individual tissue jobs to complete...")
         phase1_success = monitor_jobs(individual_output_logs, individual_error_logs)
     except KeyboardInterrupt:
         print("Keyboard interrupt detected. Individual tissue jobs will still run.")
@@ -375,13 +383,14 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     
     # Phase 2: Submit shared jobs
     print("\nPhase 2: Submitting shared analysis jobs...")
-    for script in script_output.shared_scripts:
-        result = subprocess.run(["sbatch", str(script)], check=True, capture_output=True, text=True)
-        if result.stdout:
-            print(f"{result.stdout}")
-        if result.stderr:
-            print(f"{result.stderr}")
-    
+    result = subprocess.run(["bash", str(script_output.shared_master_script)],
+                            check=True, capture_output=True, text=True)
+    if result.stdout:
+        print(f"{result.stdout}")
+    if result.stderr:
+        print(f"{result.stderr}")
+        return False
+
     # Monitor Phase 2 jobs
     try:
         print("Waiting for shared analysis jobs to complete...")
