@@ -149,7 +149,7 @@ def bedtool_preprocess(config_path: Path) -> None:
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 1:00:00
+#SBATCH -t 0:10:00
 #SBATCH --ntasks-per-node=1
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
