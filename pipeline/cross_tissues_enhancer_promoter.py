@@ -27,7 +27,8 @@ bedtools sort -i {peak_file} > $sorted_file
 # Step 2: Annotate distance to TSS
 echo "[STEP 2] Annotating TSS distance"
 tss_annotated_file={output_dir}/{species}_{tissue}_TSS_annotated.bed
-bedtools closest -a $sorted_file -b {tss_file} -d > $tss_annotated_file
+# Added "-t first" to get the first TSS hit
+bedtools closest -a $sorted_file -b {tss_file} -d -t first > $tss_annotated_file
 
 # Step 3: Classify as promoters vs enhancers
 echo "[STEP 3] Classifying enhancers and promoters"
