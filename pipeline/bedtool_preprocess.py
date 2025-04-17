@@ -24,6 +24,10 @@ class BedtoolConfig:
     species_2_organ_1_to_species_1: Path
     species_2_organ_2_to_species_1: Path
     
+    # TSS files (optional)
+    species_1_tss_file: Path
+    species_2_tss_file: Path
+    
     def __post_init__(self):
         # Check if peak files exist
         for peak_file in [self.species_1_organ_1_peak_file,
@@ -46,6 +50,12 @@ class BedtoolConfig:
                 print(f"Unzipped HALPER file {zipped_halper_file} to {halper_file}")
             assert halper_file.exists(), f"HALPER file {halper_file} does not exist"
         
+        # Check if TSS files exist (if provided)
+        for tss_file_name, tss_file in [("species_1_tss_file", self.species_1_tss_file),
+                                      ("species_2_tss_file", self.species_2_tss_file)]:
+            if tss_file is not None:
+                assert tss_file.exists(), f"TSS file {tss_file} does not exist"
+        
         # Create output directory if it doesn't exist
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -57,6 +67,7 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
     
     Args:
         config_path: Path to the config YAML file
+        output_dir_entry: The config entry to use as output directory
         
     Returns:
         A BedtoolConfig object
@@ -80,6 +91,8 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_1_organ_2_to_species_2=Path(config["species_1_organ_2_to_species_2_cleaned"]),
         species_2_organ_1_to_species_1=Path(config["species_2_organ_1_to_species_1_cleaned"]),
         species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
+        species_1_tss_file=Path(config["species_1_TSS_file"]),
+        species_2_tss_file=Path(config["species_2_TSS_file"]),
     )
 
 def bedtool_preprocess(config_path: Path) -> None:
