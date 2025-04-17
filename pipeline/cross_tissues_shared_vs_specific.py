@@ -185,7 +185,7 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
     print("Peak Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def run_cross_tissues_region_shared_vs_specific_pipeline(config_path: Path) -> bool:
+def run_cross_tissues_shared_vs_specific_pipeline(config_path: Path) -> bool:
     """
     Run the bedtools comparison pipeline for tissue-specific and shared regions.
 

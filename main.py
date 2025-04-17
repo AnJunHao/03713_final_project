@@ -43,7 +43,7 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_cross_species:
         print("Step 3: Running cross-species ortholog open vs closed pipeline...")
-        success = pipeline.run_cross_species_ortholog_open_vs_closed_pipeline(args.config)
+        success = pipeline.run_cross_species_open_vs_closed_pipeline(args.config)
         print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
     else:
         print("Step 3: Skipped cross-species ortholog open vs closed pipeline")
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_cross_tissues:
         print("Step 4: Running cross-tissues region shared vs species pipeline...")
-        success = pipeline.run_cross_tissues_region_shared_vs_specific_pipeline(args.config)
+        success = pipeline.run_cross_tissues_shared_vs_specific_pipeline(args.config)
         print("Step 4: Cross-tissues region shared vs species pipeline complete!")
     else:
         print("Step 4: Skipped cross-tissues region shared vs species pipeline")

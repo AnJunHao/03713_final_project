@@ -166,7 +166,7 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
     print("Peak Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def run_cross_species_ortholog_open_vs_closed_pipeline(config_path: Path) -> bool:
+def run_cross_species_open_vs_closed_pipeline(config_path: Path) -> bool:
     """
     Run the bedtools comparison pipeline.
 
