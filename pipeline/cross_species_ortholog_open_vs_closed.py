@@ -268,7 +268,41 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         error_logs=error_logs
     )
 
-def run_bedtool_pipeline(config_path: Path) -> bool:
+def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
+    """
+    Extract peak counts from output logs and save them to a CSV file.
+    
+    Args:
+        output_logs: List of paths to output log files
+        output_csv: Path to save the CSV file
+    """
+    with open(output_csv, 'w') as f:
+        f.write("Prefix,Total_Lifted_Peaks,Open_Peaks,Closed_Peaks\n")
+        
+        for log_file in output_logs:
+            if not log_file.exists():
+                print(f"Warning: Log file {log_file} does not exist, skipping")
+                continue
+                
+            prefix = log_file.stem.replace("bedtool_", "").replace(".out", "")
+            total_lifted = 0
+            open_peaks = 0
+            closed_peaks = 0
+            
+            with open(log_file, 'r') as log:
+                for line in log:
+                    if "Total lifted peaks:" in line:
+                        total_lifted = line.strip().split()[-1]
+                    elif "Open peaks:" in line:
+                        open_peaks = line.strip().split()[-1]
+                    elif "Closed peaks:" in line:
+                        closed_peaks = line.strip().split()[-1]
+            
+            f.write(f"{prefix},{total_lifted},{open_peaks},{closed_peaks}\n")
+    
+    print(f"Peak counts summary saved to {output_csv}")
+
+def run_cross_species_ortholog_open_vs_closed_pipeline(config_path: Path) -> bool:
     """
     Run the bedtools comparison pipeline.
 
@@ -302,62 +336,9 @@ def run_bedtool_pipeline(config_path: Path) -> bool:
         print("Keyboard interrupt detected. Jobs will still run.")
         success = False
     
+    # If jobs completed successfully, create a summary CSV
+    if success:
+        csv_output = config.output_dir / f"{config.species_1}_{config.species_2}_peak_counts_summary.csv"
+        extract_peak_counts(script_output.output_logs, csv_output)
+    
     return success
-
-class CrossSpeciesOrthologOpenVsClosedResult(NamedTuple):
-    lifted_total: int
-    open_total: int
-    closed_total: int
-
-def cross_species_ortholog_open_vs_closed(
-        halper_file: Path,
-        native_file: Path,
-        prefix: str,
-        output_dir: Path
-        ) -> CrossSpeciesOrthologOpenVsClosedResult:
-    """
-    Identify the open chromatin regions in a given species whose orthologs in the other species are open or closed.
-    This function implements the same logic as the bash script template used for the slurm jobs.
-    
-    Args:
-        halper_file: Path to the cleaned HALPER file
-        native_file: Path to the cleaned native peak file
-        prefix: Prefix for the output files
-        output_dir: Path to the output directory
-        
-    Returns:
-        A CrossSpeciesOrthologOpenVsClosedResult object
-    """
-    # Create output directory if it doesn't exist
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Step 1: Intersect for conserved (ortholog open)
-    conserved_file = output_dir / f"{prefix}_conserved.bed"
-    print(f"[STEP 1] Finding conserved peaks: {conserved_file}")
-    with open(conserved_file, "w") as out:
-        subprocess.run(["bedtools", "intersect", "-a", str(halper_file), "-b", str(native_file), "-u"], stdout=out)
-
-    # Step 2: Intersect for non-conserved (ortholog closed)
-    closed_file = output_dir / f"{prefix}_closed.bed"
-    print(f"[STEP 2] Finding non-conserved peaks: {closed_file}")
-    with open(closed_file, "w") as out:
-        subprocess.run(["bedtools", "intersect", "-a", str(halper_file), "-b", str(native_file), "-v"], stdout=out)
-
-    # Step 3: Count peaks
-    print("[STEP 3] Peak counts:")
-    def count_lines(file: Path) -> int:
-        return int(subprocess.check_output(["wc", "-l", str(file)]).decode().split()[0])
-    
-    lifted_total = count_lines(halper_file)
-    open_total = count_lines(conserved_file)
-    closed_total = count_lines(closed_file)
-    
-    print(f"Total lifted peaks: {lifted_total}")
-    print(f"Open peaks: {open_total}")
-    print(f"Closed peaks: {closed_total}")
-
-    return CrossSpeciesOrthologOpenVsClosedResult(
-        lifted_total=lifted_total,
-        open_total=open_total,
-        closed_total=closed_total
-    )

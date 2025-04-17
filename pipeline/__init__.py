@@ -1,4 +1,4 @@
 from .halper import run_halper_pipeline
-from .bedtool import run_bedtool_pipeline
+from .cross_species_ortholog_open_vs_closed import run_cross_species_ortholog_open_vs_closed_pipeline
 
-__all__ = ["run_halper_pipeline", "run_bedtool_pipeline"]
+__all__ = ["run_halper_pipeline", "run_cross_species_ortholog_open_vs_closed_pipeline"]
