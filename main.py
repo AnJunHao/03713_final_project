@@ -58,3 +58,5 @@ if __name__ == "__main__":
 
     print("="*100)
     print("Step 5: Running within-species enhancers vs promoters pipeline...")
+    success = pipeline.run_cross_tissues_enhancer_promoter_pipeline(args.config)
+    print("Step 5: Cross-tissues enhancers vs promoters pipeline complete!")
