@@ -1,0 +1,204 @@
+################################################################################
+# 3. Open Chromatin Analysis: Shared vs Specific Regions Within and Across Tissues
+# Goal: Identify open chromatin regions shared across tissues or unique to one.
+# Then answer:
+# a. For each species and tissue combination, are more regions shared across tissues or species?
+################################################################################
+
+#############################
+# WITHIN-SPECIES COMPARISON
+#############################
+
+# Preprocessing: Keep first 3 columns from HALPER output for bedtools
+cut -f1-3 human_pancreas_idr.optimal_peak.narrowPeak > human_pancreas_idr.optimal_peak.narrowPeak.cleaned
+
+#############################
+# MOUSE
+#############################
+
+## LIVER
+# A. Shared peaks – mouse liver peaks also open in mouse pancreas
+bedtools intersect -a mouse_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -b mouse_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -u > mouse_liver_peaks_shared_with_pancreas.bed
+
+# B. Liver-specific peaks
+bedtools intersect -a mouse_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -b mouse_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -v > mouse_liver_specific.bed
+
+## PANCREAS
+# A. Shared peaks – mouse pancreas peaks also open in mouse liver
+bedtools intersect -a mouse_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -b mouse_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -u > mouse_pancreas_peaks_shared_with_liver.bed
+
+# B. Pancreas-specific peaks
+bedtools intersect -a mouse_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -b mouse_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -v > mouse_pancreas_specific.bed
+
+# Count shared and specific
+wc -l mouse_liver_peaks_shared_with_pancreas.bed
+wc -l mouse_liver_specific.bed
+
+#############################
+# HUMAN
+#############################
+
+## LIVER
+# C. Shared peaks – human liver peaks also open in pancreas
+bedtools intersect -a human_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -b human_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -u > human_liver_peaks_shared_with_pancreas.bed
+
+# D. Liver-specific peaks
+bedtools intersect -a human_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -b human_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -v > human_liver_specific.bed
+
+## PANCREAS
+# C. Shared peaks – human pancreas peaks also open in liver
+bedtools intersect -a human_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -b human_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -u > human_pancreas_peaks_shared_with_liver.bed
+
+# D. Pancreas-specific peaks
+bedtools intersect -a human_pancreas_idr.optimal_peak.narrowPeak.cleaned \
+                   -b human_liver_idr.optimal_peak.narrowPeak.cleaned \
+                   -v > human_pancreas_specific.bed
+
+# Count shared and specific
+wc -l human_liver_peaks_shared_with_pancreas.bed
+wc -l human_liver_specific.bed
+
+################################################################################
+# 4. Classify Open Chromatin into Enhancers vs Promoters (TSS Distance)
+################################################################################
+
+#############################
+# WITHIN SPECIES
+#############################
+
+## MOUSE
+# Sort files
+bedtools sort -i mouse_liver_idr.optimal_peak.narrowPeak.cleaned > mouse_liver_idr.optimal_peak.cleaned.sorted.bed
+bedtools sort -i mouse_pancreas_idr.optimal_peak.narrowPeak.cleaned > mouse_pancreas_idr.optimal_peak.cleaned.sorted.bed
+
+# Annotate distance to TSS
+bedtools closest -a mouse_liver_idr.optimal_peak.cleaned.sorted.bed \
+                 -b gencode.vM15.annotation.protTranscript.geneNames_TSSWithStrand_sorted.bed \
+                 -d > mouse_liver_TSS_annotated.bed
+
+# Promoters vs Enhancers
+awk '$NF <= 5000' mouse_liver_TSS_annotated.bed > mouse_liver_promoters.bed
+awk '$NF > 5000'  mouse_liver_TSS_annotated.bed > mouse_liver_enhancers.bed
+
+bedtools closest -a mouse_pancreas_idr.optimal_peak.cleaned.sorted.bed \
+                 -b gencode.vM15.annotation.protTranscript.geneNames_TSSWithStrand_sorted.bed \
+                 -d > mouse_pancreas_TSS_annotated.bed
+
+awk '$NF <= 5000' mouse_pancreas_TSS_annotated.bed > mouse_pancreas_promoters.bed
+awk '$NF > 5000'  mouse_pancreas_TSS_annotated.bed > mouse_pancreas_enhancers.bed
+
+# Shared between tissues
+bedtools intersect -a mouse_liver_promoters.bed -b mouse_pancreas_promoters.bed -u > mouse_promoters_shared_across_tissues.bed
+bedtools intersect -a mouse_liver_enhancers.bed -b mouse_pancreas_enhancers.bed -u > mouse_enhancers_shared_across_tissues.bed
+
+## HUMAN
+# Sort
+bedtools sort -i human_liver_idr.optimal_peak.narrowPeak.cleaned > human_liver_idr.optimal_peak.cleaned.sorted.bed
+bedtools sort -i human_pancreas_idr.optimal_peak.narrowPeak.cleaned > human_pancreas_idr.optimal_peak.cleaned.sorted.bed
+
+# Annotate TSS distance
+bedtools closest -a human_liver_idr.optimal_peak.cleaned.sorted.bed \
+                 -b gencode.vH27.annotation.protTranscript.TSSsWithStrand_sorted.bed \
+                 -d > human_liver_TSS_annotated.bed
+
+awk '$NF <= 5000' human_liver_TSS_annotated.bed > human_liver_promoters.bed
+awk '$NF > 5000'  human_liver_TSS_annotated.bed > human_liver_enhancers.bed
+
+bedtools closest -a human_pancreas_idr.optimal_peak.cleaned.sorted.bed \
+                 -b gencode.vH27.annotation.protTranscript.TSSsWithStrand_sorted.bed \
+                 -d > human_pancreas_TSS_annotated.bed
+
+awk '$NF <= 5000' human_pancreas_TSS_annotated.bed > human_pancreas_promoters.bed
+awk '$NF > 5000'  human_pancreas_TSS_annotated.bed > human_pancreas_enhancers.bed
+
+# Shared between tissues
+bedtools intersect -a human_liver_promoters.bed \
+                   -b human_pancreas_promoters.bed \
+                   -u > human_promoters_shared_across_tissues.bed
+
+bedtools intersect -a human_liver_enhancers.bed \
+                   -b human_pancreas_enhancers.bed \
+                   -u > human_enhancers_shared_across_tissues.bed
+
+# Count
+wc -l mouse_liver_promoters.bed
+wc -l mouse_liver_enhancers.bed
+wc -l human_liver_promoters.bed
+wc -l human_liver_enhancers.bed
+wc -l mouse_promoters_shared_across_tissues.bed
+wc -l mouse_enhancers_shared_across_tissues.bed
+wc -l human_promoters_shared_across_tissues.bed
+wc -l human_enhancers_shared_across_tissues.bed
+
+################################################################################
+# b) Shared Across Species
+################################################################################
+
+## MOUSE: Human-to-mouse conserved regions
+# LIVER
+bedtools closest -a human_to_mouse_liver_conserved.bed \
+                 -b gencode.vM15.annotation.protTranscript.geneNames_TSSWithStrand_sorted.bed \
+                 -d > human_to_mouse_liver_conserved.TSS.bed
+
+awk '$NF <= 5000' human_to_mouse_liver_conserved.TSS.bed > human_to_mouse_liver_conserved_promoters.bed
+awk '$NF > 5000' human_to_mouse_liver_conserved.TSS.bed > human_to_mouse_liver_conserved_enhancers.bed
+
+# PANCREAS
+bedtools closest -a human_to_mouse_pancreas_conserved.bed \
+                 -b gencode.vM15.annotation.protTranscript.geneNames_TSSWithStrand_sorted.bed \
+                 -d > human_to_mouse_pancreas_conserved.TSS.bed
+
+awk '$NF <= 5000' human_to_mouse_pancreas_conserved.TSS.bed > human_to_mouse_pancreas_conserved_promoters.bed
+awk '$NF > 5000' human_to_mouse_pancreas_conserved.TSS.bed > human_to_mouse_pancreas_conserved_enhancers.bed
+
+## HUMAN: Mouse-to-human conserved regions
+# LIVER
+bedtools closest -a mouse_to_human_liver_conserved.bed \
+                 -b gencode.vH27.annotation.protTranscript.TSSsWithStrand_sorted.bed \
+                 -d > mouse_to_human_liver_conserved.TSS.bed
+
+awk '$NF <= 5000' mouse_to_human_liver_conserved.TSS.bed > mouse_to_human_liver_conserved_promoters.bed
+awk '$NF > 5000' mouse_to_human_liver_conserved.TSS.bed > mouse_to_human_liver_conserved_enhancers.bed
+
+# PANCREAS
+bedtools closest -a mouse_to_human_pancreas_conserved.bed \
+                 -b gencode.vH27.annotation.protTranscript.TSSsWithStrand_sorted.bed \
+                 -d > mouse_to_human_pancreas_conserved.TSS.bed
+
+awk '$NF <= 5000' mouse_to_human_pancreas_conserved.TSS.bed > mouse_to_human_pancreas_conserved_promoters.bed
+awk '$NF > 5000' mouse_to_human_pancreas_conserved.TSS.bed > mouse_to_human_pancreas_conserved_enhancers.bed
+
+# Shared across species (Human ➝ Mouse)
+bedtools intersect -a human_to_mouse_liver_conserved_promoters.bed \
+                   -b mouse_liver_promoters.bed \
+                   -u > liver_promoters_shared_across_species.bed
+
+bedtools intersect -a human_to_mouse_liver_conserved_enhancers.bed \
+                   -b mouse_liver_enhancers.bed \
+                   -u > liver_enhancers_shared_across_species.bed
+
+bedtools intersect -a human_to_mouse_pancreas_conserved_promoters.bed \
+                   -b mouse_pancreas_promoters.bed \
+                   -u > pancreas_promoters_shared_across_species.bed
+
+bedtools intersect -a human_to_mouse_pancreas_conserved_enhancers.bed \
+                   -b mouse_pancreas_enhancers.bed \
+                   -u > pancreas_enhancers_shared_across_species.bed
+
+# Count
+wc -l pancreas_promoters_shared_across_species.bed
+wc -l human_to_mouse_pancreas_conserved_promoters.bed
