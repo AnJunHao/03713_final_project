@@ -75,18 +75,10 @@ bedtools intersect -a {tissue1_enhancers} -b {tissue2_enhancers} -u > $shared_en
 
 # Step 3: Count shared elements
 echo "[STEP 3] Counting shared elements"
-promoters_t1=$(wc -l {tissue1_promoters} | awk '{{print $1}}')
-promoters_t2=$(wc -l {tissue2_promoters} | awk '{{print $1}}')
-enhancers_t1=$(wc -l {tissue1_enhancers} | awk '{{print $1}}')
-enhancers_t2=$(wc -l {tissue2_enhancers} | awk '{{print $1}}')
 shared_promoters=$(wc -l $shared_promoters_file | awk '{{print $1}}')
 shared_enhancers=$(wc -l $shared_enhancers_file | awk '{{print $1}}')
 
-echo "{species} {tissue1} promoters: $promoters_t1"
-echo "{species} {tissue2} promoters: $promoters_t2"
 echo "{species} shared promoters: $shared_promoters"
-echo "{species} {tissue1} enhancers: $enhancers_t1"
-echo "{species} {tissue2} enhancers: $enhancers_t2"
 echo "{species} shared enhancers: $shared_enhancers"
 
 echo "Job finished"
@@ -241,10 +233,10 @@ def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) 
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Species", "Tissue", "Total_Peaks", "Promoters", "Enhancers"]
+    headers = ["Species", "Tissue", "Total_Peaks", "Promoters", "Promoters_Pct", "Enhancers", "Enhancers_Pct"]
     
     with open(output_csv, 'w') as f:
-        f.write("Species,Tissue,Total_Peaks,Promoters,Enhancers\n")
+        f.write("Species,Tissue,Total_Peaks,Promoters,Promoters_Pct,Enhancers,Enhancers_Pct\n")
         
         for log_file in output_logs:
             if not log_file.exists():
@@ -269,14 +261,18 @@ def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) 
             with open(log_file, 'r') as log:
                 for line in log:
                     if f"Total {species} {tissue} peaks:" in line:
-                        total_peaks = line.strip().split()[-1]
+                        total_peaks = int(line.strip().split()[-1])
                     elif "Promoters:" in line:
-                        promoters = line.strip().split()[-1]
+                        promoters = int(line.strip().split()[-1])
                     elif "Enhancers:" in line:
-                        enhancers = line.strip().split()[-1]
+                        enhancers = int(line.strip().split()[-1])
             
-            f.write(f"{species},{tissue},{total_peaks},{promoters},{enhancers}\n")
-            data.append([species, tissue, total_peaks, promoters, enhancers])
+            # Calculate percentages
+            promoters_pct = round(promoters / total_peaks * 100, 2) if total_peaks > 0 else 0
+            enhancers_pct = round(enhancers / total_peaks * 100, 2) if total_peaks > 0 else 0
+            
+            f.write(f"{species},{tissue},{total_peaks},{promoters},{promoters_pct},{enhancers},{enhancers_pct}\n")
+            data.append([species, tissue, total_peaks, promoters, f"{promoters_pct}%", enhancers, f"{enhancers_pct}%"])
     
     print(f"Enhancer-Promoter counts summary saved to {output_csv}")
     print("Enhancer-Promoter Counts Summary:")
@@ -291,11 +287,10 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Species", "Tissue1_Promoters", "Tissue2_Promoters", "Shared_Promoters", 
-               "Tissue1_Enhancers", "Tissue2_Enhancers", "Shared_Enhancers"]
+    headers = ["Species", "Shared_Promoters", "Shared_Enhancers"]
     
     with open(output_csv, 'w') as f:
-        f.write("Species,Tissue1_Promoters,Tissue2_Promoters,Shared_Promoters,Tissue1_Enhancers,Tissue2_Enhancers,Shared_Enhancers\n")
+        f.write("Species,Shared_Promoters,Shared_Enhancers\n")
         
         for log_file in output_logs:
             if not log_file.exists():
@@ -309,40 +304,18 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
             parts = log_file.stem.replace("enhancer_promoter_", "").replace("_shared", "").replace(".out", "")
             species = parts
             
-            tissue1_promoters = 0
-            tissue2_promoters = 0
             shared_promoters = 0
-            tissue1_enhancers = 0
-            tissue2_enhancers = 0
             shared_enhancers = 0
-            
-            tissue1 = ""
-            tissue2 = ""
             
             with open(log_file, 'r') as log:
                 for line in log:
-                    if f"{species}" in line and "promoters:" in line:
-                        if "shared promoters:" in line:
-                            shared_promoters = line.strip().split()[-1]
-                        elif tissue1 == "":
-                            parts = line.split()
-                            tissue1 = parts[1]
-                            tissue1_promoters = parts[-1]
-                        else:
-                            parts = line.split()
-                            tissue2 = parts[1]
-                            tissue2_promoters = parts[-1]
-                    elif f"{species}" in line and "enhancers:" in line:
-                        if "shared enhancers:" in line:
-                            shared_enhancers = line.strip().split()[-1]
-                        elif tissue1 != "" and tissue1_enhancers == 0:
-                            tissue1_enhancers = line.strip().split()[-1]
-                        else:
-                            tissue2_enhancers = line.strip().split()[-1]
+                    if f"{species} shared promoters:" in line:
+                        shared_promoters = line.strip().split()[-1]
+                    elif f"{species} shared enhancers:" in line:
+                        shared_enhancers = line.strip().split()[-1]
             
-            f.write(f"{species},{tissue1_promoters},{tissue2_promoters},{shared_promoters},{tissue1_enhancers},{tissue2_enhancers},{shared_enhancers}\n")
-            data.append([species, tissue1_promoters, tissue2_promoters, shared_promoters, 
-                        tissue1_enhancers, tissue2_enhancers, shared_enhancers])
+            f.write(f"{species},{shared_promoters},{shared_enhancers}\n")
+            data.append([species, shared_promoters, shared_enhancers])
     
     print(f"Shared enhancer-promoter counts summary saved to {output_csv}")
     print("Shared Enhancer-Promoter Counts Summary:")

@@ -147,10 +147,10 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Species", "Tissue", "Total_Peaks", "Shared_Peaks", "Specific_Peaks"]
+    headers = ["Species", "Tissue", "Total_Peaks", "Shared_Peaks", "Shared_Pct", "Specific_Peaks", "Specific_Pct"]
     
     with open(output_csv, 'w') as f:
-        f.write("Species,Tissue,Total_Peaks,Shared_Peaks,Specific_Peaks\n")
+        f.write("Species,Tissue,Total_Peaks,Shared_Peaks,Shared_Pct,Specific_Peaks,Specific_Pct\n")
         
         for log_file in output_logs:
             if not log_file.exists():
@@ -172,14 +172,18 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
             with open(log_file, 'r') as log:
                 for line in log:
                     if f"Total {tissue1} peaks:" in line:
-                        total_peaks = line.strip().split()[-1]
+                        total_peaks = int(line.strip().split()[-1])
                     elif "Shared with" in line:
-                        shared_peaks = line.strip().split()[-1]
+                        shared_peaks = int(line.strip().split()[-1])
                     elif f"Specific to {tissue1}:" in line:
-                        specific_peaks = line.strip().split()[-1]
+                        specific_peaks = int(line.strip().split()[-1])
             
-            f.write(f"{species},{tissue1},{total_peaks},{shared_peaks},{specific_peaks}\n")
-            data.append([species, tissue1, total_peaks, shared_peaks, specific_peaks])
+            # Calculate percentages
+            shared_pct = round(shared_peaks / total_peaks * 100, 2) if total_peaks > 0 else 0
+            specific_pct = round(specific_peaks / total_peaks * 100, 2) if total_peaks > 0 else 0
+            
+            f.write(f"{species},{tissue1},{total_peaks},{shared_peaks},{shared_pct},{specific_peaks},{specific_pct}\n")
+            data.append([species, tissue1, total_peaks, shared_peaks, f"{shared_pct}%", specific_peaks, f"{specific_pct}%"])
     
     print(f"Peak counts summary saved to {output_csv}")
     print("Peak Counts Summary:")

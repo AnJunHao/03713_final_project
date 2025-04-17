@@ -135,10 +135,10 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Job", "Total_Lifted_Peaks", "Open_Peaks", "Closed_Peaks"]
+    headers = ["Job", "Total_Lifted_Peaks", "Open_Peaks", "Open_Pct", "Closed_Peaks", "Closed_Pct"]
     
     with open(output_csv, 'w') as f:
-        f.write("Job,Total_Lifted_Peaks,Open_Peaks,Closed_Peaks\n")
+        f.write("Job,Total_Lifted_Peaks,Open_Peaks,Open_Pct,Closed_Peaks,Closed_Pct\n")
         
         for log_file in output_logs:
             if not log_file.exists():
@@ -153,14 +153,18 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
             with open(log_file, 'r') as log:
                 for line in log:
                     if "Total lifted peaks:" in line:
-                        total_lifted = line.strip().split()[-1]
+                        total_lifted = int(line.strip().split()[-1])
                     elif "Open peaks:" in line:
-                        open_peaks = line.strip().split()[-1]
+                        open_peaks = int(line.strip().split()[-1])
                     elif "Closed peaks:" in line:
-                        closed_peaks = line.strip().split()[-1]
+                        closed_peaks = int(line.strip().split()[-1])
             
-            f.write(f"{prefix},{total_lifted},{open_peaks},{closed_peaks}\n")
-            data.append([prefix, total_lifted, open_peaks, closed_peaks])
+            # Calculate percentages
+            open_pct = round(open_peaks / total_lifted * 100, 2) if total_lifted > 0 else 0
+            closed_pct = round(closed_peaks / total_lifted * 100, 2) if total_lifted > 0 else 0
+            
+            f.write(f"{prefix},{total_lifted},{open_peaks},{open_pct},{closed_peaks},{closed_pct}\n")
+            data.append([prefix, total_lifted, open_peaks, f"{open_pct}%", closed_peaks, f"{closed_pct}%"])
     
     print(f"Peak counts summary saved to {output_csv}")
     print("Peak Counts Summary:")
