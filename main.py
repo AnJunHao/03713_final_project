@@ -11,7 +11,10 @@ if __name__ == "__main__":
         help="Path to the config .yaml file (default: config.yaml)")
     parser.add_argument(
         "--skip-halper", action="store_true", 
-        help="Skip running the HALPER pipeline (step 1)")
+        help="Skip running the HALPER pipeline (step 1).")
+    parser.add_argument(
+        "--skip-infer-halper-config-update", action="store_true", 
+        help="Skip updating the config with HALPER output (step 1).")
     parser.add_argument(
         "--skip-cross-species", action="store_true", 
         help="Skip running cross-species ortholog open vs closed pipeline (step 3)")
@@ -27,6 +30,10 @@ if __name__ == "__main__":
         print("Step 1: HALPER pipeline complete!")
     else:
         print("Step 1: Skipped HALPER pipeline")
+        if not args.skip_infer_halper_config_update:
+            success = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
+        else:
+            print("Step 1: Skipped updating the config with HALPER output")
 
     print("="*100)
     print("Step 2: Preprocessing files for bedtools pipeline...")

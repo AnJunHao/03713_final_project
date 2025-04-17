@@ -259,7 +259,6 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     update_config(config_path, halper_output)
 
     if do_not_submit:
-        print("HALPER pipeline is skipped!")
         return True
     
     # Delete old output and error logs if they exist
