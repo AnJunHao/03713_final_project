@@ -4,6 +4,7 @@ import subprocess
 import yaml
 from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
+
 @dataclass
 class BedtoolConfig:
     species_1: str
@@ -282,7 +283,7 @@ def run_bedtool_pipeline(config_path: Path) -> bool:
     script_path = script_output.script
     
     print(f"Submitting jobs: {script_path}")
-    result = subprocess.run(["sbatch", str(script_path)], check=True, capture_output=True, text=True)
+    result = subprocess.run(["bash", str(script_path)], check=True, capture_output=True, text=True)
     
     if result.stdout:
         print(f"Job submission output: {result.stdout}")
