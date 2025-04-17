@@ -24,9 +24,15 @@ class BedtoolConfig:
     species_2_organ_1_to_species_1: Path
     species_2_organ_2_to_species_1: Path
     
-    # TSS files (optional)
+    # TSS files
     species_1_tss_file: Path
     species_2_tss_file: Path
+
+    # Conserved files (optional)
+    species_1_to_species_2_organ_1_conserved: Path | None
+    species_1_to_species_2_organ_2_conserved: Path | None
+    species_2_to_species_1_organ_1_conserved: Path | None
+    species_2_to_species_1_organ_2_conserved: Path | None
     
     def __post_init__(self):
         # Check if peak files exist
@@ -93,6 +99,14 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
         species_1_tss_file=Path(config["species_1_TSS_file"]),
         species_2_tss_file=Path(config["species_2_TSS_file"]),
+        species_1_to_species_2_organ_1_conserved=Path(config["species_1_to_species_2_organ_1_conserved"])\
+            if config["species_1_to_species_2_organ_1_conserved"] else None,
+        species_1_to_species_2_organ_2_conserved=Path(config["species_1_to_species_2_organ_2_conserved"])\
+            if config["species_1_to_species_2_organ_2_conserved"] else None,
+        species_2_to_species_1_organ_1_conserved=Path(config["species_2_to_species_1_organ_1_conserved"])\
+            if config["species_2_to_species_1_organ_1_conserved"] else None,
+        species_2_to_species_1_organ_2_conserved=Path(config["species_2_to_species_1_organ_2_conserved"])\
+            if config["species_2_to_species_1_organ_2_conserved"] else None,
     )
 
 def bedtool_preprocess(config_path: Path) -> None:

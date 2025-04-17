@@ -1,9 +1,10 @@
 from pathlib import Path
 import subprocess
-from typing import NamedTuple
+from typing import NamedTuple, Literal
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
+import yaml
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
@@ -46,6 +47,10 @@ class GeneratedScriptOutput(NamedTuple):
     script: Path
     output_logs: list[Path]
     error_logs: list[Path]
+    config_entries: dict[Literal["species_1_to_species_2_organ_1_conserved",
+                                 "species_1_to_species_2_organ_2_conserved",
+                                 "species_2_to_species_1_organ_1_conserved",
+                                 "species_2_to_species_1_organ_2_conserved"], Path]
 
 def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
@@ -60,28 +65,36 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     script_paths: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
+    config_entries: dict[Literal["species_1_to_species_2_organ_1_conserved",
+                                 "species_1_to_species_2_organ_2_conserved",
+                                 "species_2_to_species_1_organ_1_conserved",
+                                 "species_2_to_species_1_organ_2_conserved"], Path] = {}
     
     # Define the four combinations we want to analyze
     combinations = [
         {
             "prefix": f"{config.species_1}_{config.organ_1}_to_{config.species_2}_{config.organ_1}",
             "halper_file": config.species_1_organ_1_to_species_2,
-            "native_file": config.species_2_organ_1_peak_file
+            "native_file": config.species_2_organ_1_peak_file,
+            "config_entry": "species_1_to_species_2_organ_1_conserved"
         },
         {
             "prefix": f"{config.species_1}_{config.organ_2}_to_{config.species_2}_{config.organ_2}",
             "halper_file": config.species_1_organ_2_to_species_2,
-            "native_file": config.species_2_organ_2_peak_file
+            "native_file": config.species_2_organ_2_peak_file,
+            "config_entry": "species_1_to_species_2_organ_2_conserved"
         },
         {
             "prefix": f"{config.species_2}_{config.organ_1}_to_{config.species_1}_{config.organ_1}",
             "halper_file": config.species_2_organ_1_to_species_1,
-            "native_file": config.species_1_organ_1_peak_file
+            "native_file": config.species_1_organ_1_peak_file,
+            "config_entry": "species_2_to_species_1_organ_1_conserved"
         },
         {
             "prefix": f"{config.species_2}_{config.organ_2}_to_{config.species_1}_{config.organ_2}",
             "halper_file": config.species_2_organ_2_to_species_1,
-            "native_file": config.species_1_organ_2_peak_file
+            "native_file": config.species_1_organ_2_peak_file,
+            "config_entry": "species_2_to_species_1_organ_2_conserved"
         }
     ]
     
@@ -94,6 +107,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         script_path = config.temp_dir / f"bedtool_{prefix}.job"
         error_log = config.output_dir / f"bedtool_{prefix}.err.txt"
         output_log = config.output_dir / f"bedtool_{prefix}.out.txt"
+        conserved_file = config.output_dir / f"{prefix}_conserved.bed"
         
         with open(script_path, "w") as f:
             f.write(script_template.format(
@@ -108,7 +122,8 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         script_paths.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
-    
+        config_entries[combo["config_entry"]] = conserved_file
+
     # Create master script to submit all jobs
     master_script = config.temp_dir / "submit_all_bedtool_jobs.sh"
     with open(master_script, "w") as f:
@@ -123,7 +138,8 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     return GeneratedScriptOutput(
         script=master_script,
         output_logs=output_logs,
-        error_logs=error_logs
+        error_logs=error_logs,
+        config_entries=config_entries
     )
 
 def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
@@ -170,7 +186,29 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
     print("Peak Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def run_cross_species_open_vs_closed_pipeline(config_path: Path) -> bool:
+def update_config(config_path: Path, conserved_files: dict[str, Path]) -> None:
+    """
+    Update the config file with the conserved files.
+    """
+    # First, backup the original config file
+    backup_path = Path(f"{config_path}.backup03")
+    with open(config_path, "r") as src:
+        with open(backup_path, "w") as dst:
+            dst.write(src.read())
+    
+    # Read the config file
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    
+    # Update the config file with the conserved files
+    for key, value in conserved_files.items():
+        config[key] = value.as_posix()
+    
+    # Write the updated config file
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
+
+def run_cross_species_open_vs_closed_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     """
     Run the bedtools comparison pipeline.
 
@@ -180,6 +218,10 @@ def run_cross_species_open_vs_closed_pipeline(config_path: Path) -> bool:
     config = load_bedtool_config(config_path, "cross_species_open_vs_closed_output_dir")
     script_output = generate_script(config)
     script_path = script_output.script
+    update_config(config_path, script_output.config_entries) # type: ignore
+
+    if do_not_submit:
+        return True
 
     # Clean old output err logs
     old_log_count = 0

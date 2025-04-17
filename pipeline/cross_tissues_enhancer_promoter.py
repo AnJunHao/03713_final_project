@@ -59,28 +59,28 @@ shared_script_template = """#!/bin/bash
 
 module load bedtools
 
-echo "Processing {species} shared enhancers and promoters between tissues"
+echo "Processing {species} shared enhancers and promoters using {reference_tissue} as reference"
 
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
 # Step 1: Find shared promoters between tissues
 echo "[STEP 1] Finding shared promoters"
-shared_promoters_file={output_dir}/{species}_promoters_shared_across_tissues.bed
-bedtools intersect -a {tissue1_promoters} -b {tissue2_promoters} -u > $shared_promoters_file
+shared_promoters_file={output_dir}/{species}_promoters_{reference_tissue}_as_reference.bed
+bedtools intersect -a {reference_promoters} -b {target_promoters} -u > $shared_promoters_file
 
 # Step 2: Find shared enhancers between tissues
 echo "[STEP 2] Finding shared enhancers"
-shared_enhancers_file={output_dir}/{species}_enhancers_shared_across_tissues.bed
-bedtools intersect -a {tissue1_enhancers} -b {tissue2_enhancers} -u > $shared_enhancers_file
+shared_enhancers_file={output_dir}/{species}_enhancers_{reference_tissue}_as_reference.bed
+bedtools intersect -a {reference_enhancers} -b {target_enhancers} -u > $shared_enhancers_file
 
 # Step 3: Count shared elements
 echo "[STEP 3] Counting shared elements"
 shared_promoters=$(wc -l $shared_promoters_file | awk '{{print $1}}')
 shared_enhancers=$(wc -l $shared_enhancers_file | awk '{{print $1}}')
 
-echo "{species} shared promoters: $shared_promoters"
-echo "{species} shared enhancers: $shared_enhancers"
+echo "{species} shared promoters using {reference_tissue} as reference: $shared_promoters"
+echo "{species} shared enhancers using {reference_tissue} as reference: $shared_enhancers"
 
 echo "Job finished"
 """
@@ -168,34 +168,44 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     shared_combinations = [
         {
             "species": f"{config.species_1}",
-            "tissue1": config.organ_1,
-            "tissue2": config.organ_2,
+            "reference_tissue": config.organ_1,
+            "target_tissue": config.organ_2,
+        },
+        {
+            "species": f"{config.species_1}",
+            "reference_tissue": config.organ_2,
+            "target_tissue": config.organ_1,
         },
         {
             "species": f"{config.species_2}",
-            "tissue1": config.organ_1,
-            "tissue2": config.organ_2,
+            "reference_tissue": config.organ_1,
+            "target_tissue": config.organ_2,
+        },
+        {
+            "species": f"{config.species_2}",
+            "reference_tissue": config.organ_2,
+            "target_tissue": config.organ_1,
         }
     ]
     
     for combo in shared_combinations:
         species = combo["species"]
-        tissue1 = combo["tissue1"]
-        tissue2 = combo["tissue2"]
+        reference_tissue = combo["reference_tissue"]
+        target_tissue = combo["target_tissue"]
         
-        script_path = config.temp_dir / f"enhancer_promoter_{species}_shared.job"
-        error_log = config.output_dir / f"enhancer_promoter_{species}_shared.err.txt"
-        output_log = config.output_dir / f"enhancer_promoter_{species}_shared.out.txt"
+        script_path = config.temp_dir / f"enhancer_promoter_{species}_{reference_tissue}_reference.job"
+        error_log = config.output_dir / f"enhancer_promoter_{species}_{reference_tissue}_reference.err.txt"
+        output_log = config.output_dir / f"enhancer_promoter_{species}_{reference_tissue}_reference.out.txt"
         
         with open(script_path, "w") as f:
             f.write(shared_script_template.format(
                 species=species,
-                tissue1=tissue1,
-                tissue2=tissue2,
-                tissue1_promoters=f"{config.output_dir}/{species}_{tissue1}_promoters.bed",
-                tissue2_promoters=f"{config.output_dir}/{species}_{tissue2}_promoters.bed",
-                tissue1_enhancers=f"{config.output_dir}/{species}_{tissue1}_enhancers.bed",
-                tissue2_enhancers=f"{config.output_dir}/{species}_{tissue2}_enhancers.bed",
+                reference_tissue=reference_tissue,
+                target_tissue=target_tissue,
+                reference_promoters=f"{config.output_dir}/{species}_{reference_tissue}_promoters.bed",
+                target_promoters=f"{config.output_dir}/{species}_{target_tissue}_promoters.bed",
+                reference_enhancers=f"{config.output_dir}/{species}_{reference_tissue}_enhancers.bed",
+                target_enhancers=f"{config.output_dir}/{species}_{target_tissue}_enhancers.bed",
                 output_dir=config.output_dir,
                 error_log=error_log,
                 output_log=output_log
@@ -296,35 +306,36 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Species", "Shared_Promoters", "Shared_Enhancers"]
+    headers = ["Species", "Reference_Tissue", "Shared_Promoters", "Shared_Enhancers"]
     
     with open(output_csv, 'w') as f:
-        f.write("Species,Shared_Promoters,Shared_Enhancers\n")
+        f.write("Species,Reference_Tissue,Shared_Promoters,Shared_Enhancers\n")
         
         for log_file in output_logs:
             if not log_file.exists():
                 print(f"Warning: Log file {log_file} does not exist, skipping")
                 continue
                 
-            # Only process shared tissue logs
-            if "shared" not in log_file.stem:
+            # Only process reference tissue logs
+            if "reference" not in log_file.stem:
                 continue
                 
-            parts = log_file.stem.replace("enhancer_promoter_", "").replace("_shared", "").replace(".out", "")
-            species = parts
+            filename_parts = log_file.stem.split('_')
+            species = filename_parts[1]
+            reference_tissue = filename_parts[2]
             
             shared_promoters = 0
             shared_enhancers = 0
             
             with open(log_file, 'r') as log:
                 for line in log:
-                    if f"{species} shared promoters:" in line:
+                    if f"{species} shared promoters using {reference_tissue} as reference:" in line:
                         shared_promoters = line.strip().split()[-1]
-                    elif f"{species} shared enhancers:" in line:
+                    elif f"{species} shared enhancers using {reference_tissue} as reference:" in line:
                         shared_enhancers = line.strip().split()[-1]
             
-            f.write(f"{species},{shared_promoters},{shared_enhancers}\n")
-            data.append([species, shared_promoters, shared_enhancers])
+            f.write(f"{species},{reference_tissue},{shared_promoters},{shared_enhancers}\n")
+            data.append([species, reference_tissue, shared_promoters, shared_enhancers])
     
     print(f"Shared enhancer-promoter counts summary saved to {output_csv}")
     print("Shared (within-species, cross-tissues) Enhancer-Promoter Counts Summary:")
@@ -356,7 +367,7 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     # Split log lists for monitoring
     individual_output_logs = script_output.output_logs[:4]  # First 4 are individual tissues
     individual_error_logs = script_output.error_logs[:4]
-    shared_output_logs = script_output.output_logs[4:]      # Last 2 are shared analyses
+    shared_output_logs = script_output.output_logs[4:]      # Last 4 are reference tissue analyses (was 2 before)
     shared_error_logs = script_output.error_logs[4:]
     
     # Phase 1: Submit individual tissue jobs
@@ -381,6 +392,11 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
         print("Individual tissue jobs failed. Skipping shared analysis jobs.")
         return False
     
+    # Create enhancer-promoter counts summary
+    if phase1_success:
+        csv_output = config.output_dir / f"enhancer_promoter_counts_summary.csv"
+        extract_enhancer_promoter_counts(individual_output_logs, csv_output)
+    
     # Phase 2: Submit shared jobs
     print("\nPhase 2: Submitting shared analysis jobs...")
     result = subprocess.run(["bash", str(script_output.shared_master_script)],
@@ -400,11 +416,7 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
         raise KeyboardInterrupt
     
     # If jobs completed successfully, create summary CSVs
-    if phase1_success and phase2_success:
-        # Create enhancer-promoter counts summary
-        csv_output = config.output_dir / f"enhancer_promoter_counts_summary.csv"
-        extract_enhancer_promoter_counts(individual_output_logs, csv_output)
-        
+    if phase2_success: 
         # Create shared counts summary
         shared_csv_output = config.output_dir / f"shared_enhancer_promoter_counts_summary.csv"
         extract_shared_counts(shared_output_logs, shared_csv_output)

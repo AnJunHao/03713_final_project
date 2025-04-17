@@ -13,11 +13,14 @@ if __name__ == "__main__":
         "--skip-halper", action="store_true", 
         help="Skip running the HALPER pipeline (step 1).")
     parser.add_argument(
-        "--skip-infer-halper-config-update", action="store_true", 
+        "--skip-infer-halper-output", action="store_true", 
         help="Skip updating the config with HALPER output (step 1).")
     parser.add_argument(
         "--skip-cross-species", action="store_true", 
         help="Skip running cross-species ortholog open vs closed pipeline (step 3)")
+    parser.add_argument(
+        "--skip-infer-conserved-files", action="store_true", 
+        help="Skip updating the config with conserved files (step 3)")
     parser.add_argument(
         "--skip-cross-tissues", action="store_true", 
         help="Skip running cross-tissues region shared vs species pipeline (step 4)")
@@ -30,7 +33,7 @@ if __name__ == "__main__":
         print("Step 1: HALPER pipeline complete!")
     else:
         print("Step 1: Skipped HALPER pipeline")
-        if not args.skip_infer_halper_config_update:
+        if not args.skip_infer_halper_output:
             success = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
         else:
             print("Step 1: Skipped updating the config with HALPER output")
@@ -48,6 +51,11 @@ if __name__ == "__main__":
         print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
     else:
         print("Step 3: Skipped cross-species ortholog open vs closed pipeline")
+        if not args.skip_infer_conserved_files:
+            success = pipeline.run_cross_species_open_vs_closed_pipeline(args.config, do_not_submit=True)
+        else:
+            print("Step 3: Skipped updating the config with conserved files")
+            success = True
 
     print("="*100)
     if not args.skip_cross_tissues:
