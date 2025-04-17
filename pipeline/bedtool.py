@@ -125,7 +125,8 @@ def bedtool_preprocess(config_path: Path) -> None:
                   "species_2_organ_2_to_species_1"]:
         halper_file = Path(config[entry])
         cleaned_file = cleaned_dir / halper_file.name
-        subprocess.run(["cut", "-f1-3", halper_file, ">", cleaned_file])
+        with open(cleaned_file, "w") as outfile:
+            subprocess.run(["cut", "-f1-3", str(halper_file)], stdout=outfile)
         # Update the config file with the cleaned file
         config[entry+"_cleaned"] = str(cleaned_file)
     
@@ -136,7 +137,8 @@ def bedtool_preprocess(config_path: Path) -> None:
                   "species_2_organ_2_peak_file"]:
         peak_file = Path(config[entry])
         cleaned_file = cleaned_dir / peak_file.name
-        subprocess.run(["cut", "-f1-3", peak_file, ">", cleaned_file])
+        with open(cleaned_file, "w") as outfile:
+            subprocess.run(["cut", "-f1-3", str(peak_file)], stdout=outfile)
         # Update the config file with the cleaned file
         config[entry+"_cleaned"] = str(cleaned_file)
     
