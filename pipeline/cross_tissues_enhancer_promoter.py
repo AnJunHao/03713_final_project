@@ -319,20 +319,32 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
             # Only process reference tissue logs
             if "reference" not in log_file.stem:
                 continue
+            
+            # Parse log filename to extract species and reference tissue
+            # The format is like: enhancer_promoter_Human_Liver_reference.out.txt
+            parts = log_file.stem.split('_')
+            if len(parts) < 4:
+                print(f"Warning: Unexpected log filename format: {log_file}, skipping")
+                continue
                 
-            filename_parts = log_file.stem.split('_')
-            species = filename_parts[1]
-            reference_tissue = filename_parts[2]
+            species = parts[1]
+            reference_tissue = parts[2]
             
             shared_promoters = 0
             shared_enhancers = 0
             
             with open(log_file, 'r') as log:
                 for line in log:
-                    if f"{species} shared promoters using {reference_tissue} as reference:" in line:
-                        shared_promoters = line.strip().split()[-1]
-                    elif f"{species} shared enhancers using {reference_tissue} as reference:" in line:
-                        shared_enhancers = line.strip().split()[-1]
+                    if "shared promoters using" in line and "as reference:" in line:
+                        try:
+                            shared_promoters = int(line.strip().split()[-1])
+                        except ValueError:
+                            print(f"Warning: Failed to parse promoter count from line: {line}")
+                    elif "shared enhancers using" in line and "as reference:" in line:
+                        try:
+                            shared_enhancers = int(line.strip().split()[-1])
+                        except ValueError:
+                            print(f"Warning: Failed to parse enhancer count from line: {line}")
             
             f.write(f"{species},{reference_tissue},{shared_promoters},{shared_enhancers}\n")
             data.append([species, reference_tissue, shared_promoters, shared_enhancers])
