@@ -6,28 +6,8 @@ from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
 import yaml
 
-class EnhancerPromoterOutput(NamedTuple):
-    stage1_script: Path
-    stage2_script: Path
-    output_logs: list[Path]
-    error_logs: list[Path]
-    stage1_logs: list[Path]
-    stage2_logs: list[Path]
-    promoter_files: dict[str, Path]
-    enhancer_files: dict[str, Path]
-
-def generate_scripts(config: BedtoolConfig) -> EnhancerPromoterOutput:
-    """
-    Generate scripts to run the enhancer-promoter analysis for different species and organ combinations.
-
-    Args:
-        config: A BedtoolConfig object.
-
-    Returns:
-        An EnhancerPromoterOutput object containing paths to scripts and output files
-    """
-    # Define script templates inside the function
-    script_template = """#!/bin/bash
+# Script template for analyzing conserved regions from one species to another
+CONSERVED_REGIONS_SCRIPT_TEMPLATE = """#!/bin/bash
 #SBATCH -p RM-shared
 #SBATCH -t 0:20:00
 #SBATCH --ntasks-per-node=1
@@ -73,7 +53,8 @@ rm {output_dir}/{prefix}_conserved.sorted.bed {output_dir}/{prefix}_tss.sorted.b
 echo "Job finished"
 """
 
-    shared_script_template = """#!/bin/bash
+# Script template for identifying shared elements across species
+SHARED_ELEMENTS_SCRIPT_TEMPLATE = """#!/bin/bash
 #SBATCH -p RM-shared
 #SBATCH -t 0:15:00
 #SBATCH --ntasks-per-node=1
@@ -128,7 +109,27 @@ rm {output_dir}/temp_{organ}_s2_enhancers.sorted.bed
 
 echo "Job finished"
 """
-    
+
+class EnhancerPromoterOutput(NamedTuple):
+    stage1_script: Path
+    stage2_script: Path
+    output_logs: list[Path]
+    error_logs: list[Path]
+    stage1_logs: list[Path]
+    stage2_logs: list[Path]
+    promoter_files: dict[str, Path]
+    enhancer_files: dict[str, Path]
+
+def generate_scripts(config: BedtoolConfig) -> EnhancerPromoterOutput:
+    """
+    Generate scripts to run the cross-species enhancer-promoter analysis.
+
+    Args:
+        config: A BedtoolConfig object.
+
+    Returns:
+        An EnhancerPromoterOutput object containing paths to scripts and output files
+    """
     stage1_scripts: list[Path] = []
     stage2_scripts: list[Path] = []
     all_scripts: list[Path] = []
@@ -139,77 +140,7 @@ echo "Job finished"
     promoter_files: dict[str, Path] = {}
     enhancer_files: dict[str, Path] = {}
     
-    # Create native species enhancer/promoter scripts (STAGE 1)
-    for species, species_name in [(1, config.species_1), (2, config.species_2)]:
-        for organ in [config.organ_1, config.organ_2]:
-            prefix = f"{species_name}_{organ}"
-            script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
-            error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
-            output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
-            
-            if species == 1:
-                peak_file = config.species_1_organ_1_peak_file if organ == config.organ_1 else config.species_1_organ_2_peak_file
-                tss_file = config.species_1_tss_file
-            else:
-                peak_file = config.species_2_organ_1_peak_file if organ == config.organ_1 else config.species_2_organ_2_peak_file
-                tss_file = config.species_2_tss_file
-            
-            with open(script_path, "w") as f:
-                f.write(f"""#!/bin/bash
-#SBATCH -p RM-shared
-#SBATCH -t 0:10:00
-#SBATCH --ntasks-per-node=1
-#SBATCH --error={error_log}
-#SBATCH --output={output_log}
-
-module load bedtools
-
-echo "Processing {species_name}_{organ} native enhancer-promoter analysis"
-
-# Create output directory if it doesn't exist
-mkdir -p {config.output_dir}
-
-# Sort input files to ensure consistent chromosome ordering
-echo "Sorting input files to ensure consistent chromosome ordering"
-sort -k1,1 -k2,2n {peak_file} > {config.output_dir}/{prefix}_peaks.sorted.bed
-sort -k1,1 -k2,2n {tss_file} > {config.output_dir}/{prefix}_tss.sorted.bed
-
-# Step 1: Find nearest TSS for peaks
-echo "[STEP 1] Finding nearest TSS for peaks"
-bedtools closest -a {config.output_dir}/{prefix}_peaks.sorted.bed \\
-                -b {config.output_dir}/{prefix}_tss.sorted.bed \\
-                -d > {config.output_dir}/{prefix}_TSS_annotated.bed
-
-# Step 2: Categorize as promoters (<=5000bp from TSS) or enhancers (>5000bp from TSS)
-echo "[STEP 2] Categorizing as promoters or enhancers"
-awk '$NF <= 5000' {config.output_dir}/{prefix}_TSS_annotated.bed > {config.output_dir}/{prefix}_promoters.bed
-awk '$NF > 5000' {config.output_dir}/{prefix}_TSS_annotated.bed > {config.output_dir}/{prefix}_enhancers.bed
-
-# Step 3: Report counts
-echo "[STEP 3] Counting results"
-total_peaks=$(wc -l {peak_file} | awk '{{print $1}}')
-promoters=$(wc -l {config.output_dir}/{prefix}_promoters.bed | awk '{{print $1}}')
-enhancers=$(wc -l {config.output_dir}/{prefix}_enhancers.bed | awk '{{print $1}}')
-
-echo "Total peaks: $total_peaks"
-echo "Promoters (<=5000bp from TSS): $promoters"
-echo "Enhancers (>5000bp from TSS): $enhancers"
-echo "Promoters percentage: $(echo "scale=2; $promoters/$total_peaks*100" | bc)%"
-echo "Enhancers percentage: $(echo "scale=2; $enhancers/$total_peaks*100" | bc)%"
-
-# Clean up intermediate sorted files
-rm {config.output_dir}/{prefix}_peaks.sorted.bed {config.output_dir}/{prefix}_tss.sorted.bed
-
-echo "Job finished"
-""")
-            
-            stage1_scripts.append(script_path)
-            all_scripts.append(script_path)
-            output_logs.append(output_log)
-            error_logs.append(error_log)
-            stage1_logs.append(output_log)
-    
-    # Define the four combinations for conserved regions analysis (STAGE 2)
+    # Define the four combinations for conserved regions analysis (STAGE 1)
     combinations = [
         {
             "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_1}",
@@ -245,7 +176,7 @@ echo "Job finished"
         }
     ]
     
-    # Create scripts for each conserved region combination (STAGE 2)
+    # Create scripts for each conserved region combination (STAGE 1)
     for combo in combinations:
         prefix = combo["prefix"]
         
@@ -256,7 +187,7 @@ echo "Job finished"
         enhancer_file = config.output_dir / f"{prefix}_conserved_enhancers.bed"
         
         with open(script_path, "w") as f:
-            f.write(script_template.format(
+            f.write(CONSERVED_REGIONS_SCRIPT_TEMPLATE.format(
                 prefix=prefix,
                 species_from=combo["species_from"],
                 species_to=combo["species_to"],
@@ -268,11 +199,11 @@ echo "Job finished"
                 output_log=output_log
             ))
         
-        stage2_scripts.append(script_path)
+        stage1_scripts.append(script_path)
         all_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
-        stage2_logs.append(output_log)
+        stage1_logs.append(output_log)
         
         # Store the output files for later use
         promoter_files[prefix] = promoter_file
@@ -286,15 +217,15 @@ echo "Job finished"
         output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
         
         species_1_to_species_2_prefix = f"{config.species_1}_to_{config.species_2}_{organ}"
-        species_2_native_prefix = f"{config.species_2}_{organ}"
+        species_2_to_species_1_prefix = f"{config.species_2}_to_{config.species_1}_{organ}"
         
         with open(script_path, "w") as f:
-            f.write(shared_script_template.format(
+            f.write(SHARED_ELEMENTS_SCRIPT_TEMPLATE.format(
                 organ=organ,
                 species_1_to_species_2_promoters=promoter_files[species_1_to_species_2_prefix],
                 species_1_to_species_2_enhancers=enhancer_files[species_1_to_species_2_prefix],
-                species_2_native_promoters=config.output_dir / f"{species_2_native_prefix}_promoters.bed",
-                species_2_native_enhancers=config.output_dir / f"{species_2_native_prefix}_enhancers.bed",
+                species_2_native_promoters=promoter_files[species_2_to_species_1_prefix],
+                species_2_native_enhancers=enhancer_files[species_2_to_species_1_prefix],
                 output_dir=config.output_dir,
                 error_log=error_log,
                 output_log=output_log
@@ -306,23 +237,23 @@ echo "Job finished"
         error_logs.append(error_log)
         stage2_logs.append(output_log)
     
-    # Create master script for stage 1 (native species analysis)
+    # Create master script for stage 1 (conserved regions analysis)
     stage1_master_script = config.temp_dir / "submit_enhancer_promoter_stage1_jobs.sh"
     with open(stage1_master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
-        f.write("echo 'Submitting native species enhancer-promoter analysis jobs...'\n")
+        f.write("echo 'Submitting conserved regions enhancer-promoter analysis jobs...'\n")
         for script in stage1_scripts:
             f.write(f"sbatch {script}\n")
-        f.write("echo 'All native species jobs submitted'\n")
+        f.write("echo 'All conserved regions jobs submitted'\n")
     
-    # Create master script for stage 2 (conserved regions and shared analysis)
+    # Create master script for stage 2 (shared analysis)
     stage2_master_script = config.temp_dir / "submit_enhancer_promoter_stage2_jobs.sh"
     with open(stage2_master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
-        f.write("echo 'Submitting conserved region and shared analysis jobs...'\n")
+        f.write("echo 'Submitting shared analysis jobs...'\n")
         for script in stage2_scripts:
             f.write(f"sbatch {script}\n")
-        f.write("echo 'All stage 2 jobs submitted'\n")
+        f.write("echo 'All shared analysis jobs submitted'\n")
     
     # Make the master scripts executable
     stage1_master_script.chmod(0o755)
@@ -367,7 +298,7 @@ def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) 
             
             with open(log_file, 'r') as log:
                 for line in log:
-                    if "Total peaks:" in line or "Total conserved regions:" in line:
+                    if "Total conserved regions:" in line or "Total peaks:" in line:
                         total_peaks = int(line.strip().split()[-1])
                     elif "Promoters (<=5000bp from TSS):" in line:
                         promoters = int(line.strip().split()[-1])
@@ -417,7 +348,7 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
         print(f"Deleted {old_log_count} old log files")
     
     # Submit stage 1 jobs
-    print("Submitting stage 1 jobs (native species analysis)...")
+    print("Submitting stage 1 jobs (conserved regions analysis)...")
     result = subprocess.run(["bash", str(script_output.stage1_script)], check=True, capture_output=True, text=True)
     
     if result.stdout:
@@ -439,7 +370,7 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
         return False
     
     # Submit stage 2 jobs
-    print("Submitting stage 2 jobs (conserved regions and shared analysis)...")
+    print("Submitting stage 2 jobs (shared analysis)...")
     result = subprocess.run(["bash", str(script_output.stage2_script)], check=True, capture_output=True, text=True)
     
     if result.stdout:
