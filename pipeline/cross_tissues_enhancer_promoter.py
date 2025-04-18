@@ -297,19 +297,36 @@ def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) 
     print("Enhancer-Promoter Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
+def extract_shared_counts(output_logs: list[Path], output_csv: Path, individual_csv: Path) -> None:
     """
     Extract shared enhancer and promoter counts from output logs and save to a CSV file
     
     Args:
         output_logs: List of paths to output log files
         output_csv: Path to save the CSV file
+        individual_csv: Path to the CSV with individual tissue counts
     """
+    # First load individual tissue counts to calculate percentages
+    individual_counts = {}
+    if individual_csv.exists():
+        with open(individual_csv, 'r') as f:
+            # Skip header
+            f.readline()
+            for line in f:
+                parts = line.strip().split(',')
+                if len(parts) >= 5:  # Make sure we have enough columns
+                    species = parts[0]
+                    tissue = parts[1]
+                    promoters = int(parts[3])
+                    enhancers = int(parts[5])
+                    individual_counts[(species, tissue)] = (promoters, enhancers)
+    
     data = []
-    headers = ["Species", "Reference_Tissue", "Shared_Promoters", "Shared_Enhancers"]
+    headers = ["Species", "Reference_Tissue", "Shared_Promoters", "Shared_Enhancers", 
+               "Promoters_Pct", "Enhancers_Pct"]
     
     with open(output_csv, 'w') as f:
-        f.write("Species,Reference_Tissue,Shared_Promoters,Shared_Enhancers\n")
+        f.write("Species,Reference_Tissue,Shared_Promoters,Shared_Enhancers,Promoters_Pct,Enhancers_Pct\n")
         
         for log_file in output_logs:
             if not log_file.exists():
@@ -359,8 +376,20 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
                     except (ValueError, IndexError):
                         print(f"Warning: Failed to parse enhancer count from line: {enhancer_line}")
             
-            f.write(f"{species},{reference_tissue},{shared_promoters},{shared_enhancers}\n")
-            data.append([species, reference_tissue, shared_promoters, shared_enhancers])
+            # Calculate percentages if we have individual counts
+            promoters_pct = 0
+            enhancers_pct = 0
+            
+            if (species, reference_tissue) in individual_counts:
+                total_promoters, total_enhancers = individual_counts[(species, reference_tissue)]
+                if total_promoters > 0:
+                    promoters_pct = round((shared_promoters / total_promoters) * 100, 2)
+                if total_enhancers > 0:
+                    enhancers_pct = round((shared_enhancers / total_enhancers) * 100, 2)
+            
+            f.write(f"{species},{reference_tissue},{shared_promoters},{shared_enhancers},{promoters_pct},{enhancers_pct}\n")
+            data.append([species, reference_tissue, shared_promoters, shared_enhancers, 
+                         f"{promoters_pct}%", f"{enhancers_pct}%"])
     
     print(f"Shared enhancer-promoter counts summary saved to {output_csv}")
     print("Shared (within-species, cross-tissues) Enhancer-Promoter Counts Summary:")
@@ -395,6 +424,10 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     shared_output_logs = script_output.output_logs[4:]      # Last 4 are reference tissue analyses (was 2 before)
     shared_error_logs = script_output.error_logs[4:]
     
+    # Define CSV output paths
+    individual_csv_output = config.output_dir / f"enhancer_promoter_counts_summary.csv"
+    shared_csv_output = config.output_dir / f"shared_enhancer_promoter_counts_summary.csv"
+    
     # Phase 1: Submit individual tissue jobs
     print("Phase 1: Submitting individual tissue jobs...")
     result = subprocess.run(["bash", str(script_output.individual_master_script)],
@@ -419,8 +452,7 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     
     # Create enhancer-promoter counts summary
     if phase1_success:
-        csv_output = config.output_dir / f"enhancer_promoter_counts_summary.csv"
-        extract_enhancer_promoter_counts(individual_output_logs, csv_output)
+        extract_enhancer_promoter_counts(individual_output_logs, individual_csv_output)
     
     # Phase 2: Submit shared jobs
     print("\nPhase 2: Submitting shared analysis jobs...")
@@ -442,8 +474,7 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     
     # If jobs completed successfully, create summary CSVs
     if phase2_success: 
-        # Create shared counts summary
-        shared_csv_output = config.output_dir / f"shared_enhancer_promoter_counts_summary.csv"
-        extract_shared_counts(shared_output_logs, shared_csv_output)
+        # Create shared counts summary with percentages
+        extract_shared_counts(shared_output_logs, shared_csv_output, individual_csv_output)
     
     return phase1_success and phase2_success
