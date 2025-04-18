@@ -4,6 +4,8 @@ This project provides a pipeline for comparing chromatin accessibility data (e.g
 
 ## 1. Setup
 
+This pipeline is designed to be run on a HPC cluster and is tested on the [PSC Bridges-2 cluster](https://www.psc.edu/resources/bridges-2/).
+
 ### 1.1. Clone the Repository
 
 ```bash
@@ -61,6 +63,8 @@ Run the entire pipeline using the main script:
 python main.py --config config.yaml
 ```
 
+Simply run the command in the **login node** and the pipeline will automatically setup jobs on the compute nodes for each step.
+
 ### Command-line Options
 
 You can skip specific steps using command-line flags:
@@ -95,12 +99,16 @@ Maps regulatory elements (peaks) from one species to another using the HALPER to
 - Generates mapped peak files in the target species' genome coordinates
 - Creates the foundation for all downstream cross-species analyses
 
+*Estimated runtime: ~3 hours*
+
 ### Step 2: BedTools Preprocessing (`pipeline/bedtool_preprocess.py`)
 Prepares the data for the downstream analyses by:
 - Extracting coordinate information (first 3 columns) from the peak files
 - Unzipping HALPER output files if needed
 - Creating clean BED files for use in subsequent steps
 - Updating the configuration with paths to these cleaned files
+
+*Estimated runtime: < 10 seconds*
 
 ### Step 3: Cross-Species Ortholog Comparison (Open vs. Closed) (`pipeline/cross_species_open_vs_closed.py`)
 Identifies conserved and species-specific regulatory elements by:
@@ -109,12 +117,16 @@ Identifies conserved and species-specific regulatory elements by:
 - Classifying orthologous elements as "closed" (species-specific) if they don't overlap with native peaks
 - Generating statistics on conservation rates between species for each tissue
 
+*Estimated runtime (excluding queuing time): < 30 seconds*
+
 ### Step 4: Cross-Tissue Comparison (Shared vs. Specific) (`pipeline/cross_tissues_shared_vs_specific.py`)
 Examines tissue specificity of regulatory elements within each species by:
 - Comparing peak sets between different tissues of the same species
 - Identifying "shared" peaks that appear in both tissues
 - Identifying "tissue-specific" peaks unique to each tissue
 - Generating statistics on the proportion of shared versus tissue-specific elements
+
+*Estimated runtime (excluding queuing time): < 30 seconds*
 
 ### Step 5: Cross-Tissue Comparison (Enhancer vs. Promoter) (`pipeline/cross_tissues_enhancer_promoter.py`)
 Classifies regulatory elements by genomic context and examines their tissue specificity by:
@@ -123,12 +135,16 @@ Classifies regulatory elements by genomic context and examines their tissue spec
 - Identifying tissue-shared versus tissue-specific enhancers and promoters
 - Generating statistics on the proportion of enhancers versus promoters in each tissue
 
+*Estimated runtime (excluding queuing time): < 30 seconds*
+
 ### Step 6: Cross-Species Comparison (Enhancer vs. Promoter) (`pipeline/cross_species_enhancer_promoter.py`)
 Examines the evolutionary conservation of different types of regulatory elements by:
 - Classifying conserved (open) peaks identified in Step 3 as enhancers or promoters based on distance to TSS
 - Comparing enhancer and promoter conservation rates between species
 - Identifying elements that maintain the same classification (enhancer/promoter) across species
 - Generating statistics on conservation patterns specific to enhancers versus promoters
+
+*Estimated runtime (excluding queuing time): < 30 seconds*
 
 ## 5. Outputs
 
@@ -139,3 +155,10 @@ Each pipeline step generates output files in the respective directories specifie
 *   [halLiftover-postprocessing Repository](https://github.com/pfenninglab/halLiftover-postprocessing)
 *   [BedTools Documentation](https://bedtools.readthedocs.io/)
 *   [HAL Tools](https://github.com/ComparativeGenomicsToolkit/hal)
+
+## 7. Contributors
+
+*   [Claude](https://github.com/AnJunHao)
+*   [Isabella](https://github.com/iasalasallende)
+*   [Shruthi](https://github.com/shruthirajaraman)
+*   [Yitian](https://github.com/yitianTracy)
