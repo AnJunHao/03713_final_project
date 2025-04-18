@@ -10,24 +10,27 @@ if __name__ == "__main__":
         "--config", type=Path, default=Path("config.yaml"),
         help="Path to the config .yaml file (default: config.yaml)")
     parser.add_argument(
-        "--skip-halper", action="store_true", 
+        "--skip-step-1", action="store_true", 
         help="Skip running the HALPER pipeline (step 1).")
     parser.add_argument(
         "--skip-infer-halper-output", action="store_true", 
         help="Skip updating the config with HALPER output (step 1).")
     parser.add_argument(
-        "--skip-cross-species", action="store_true", 
-        help="Skip running cross-species ortholog open vs closed pipeline (step 3)")
+        "--skip-step-3", action="store_true", 
+        help="Skip running cross-species ortholog open vs closed pipeline (step 3).")
     parser.add_argument(
         "--skip-infer-conserved-files", action="store_true", 
         help="Skip updating the config with conserved files (step 3)")
     parser.add_argument(
-        "--skip-cross-tissues", action="store_true", 
+        "--skip-step-4", action="store_true", 
         help="Skip running cross-tissues region shared vs species pipeline (step 4)")
+    parser.add_argument(
+        "--skip-step-5", action="store_true", 
+        help="Skip running cross-tissues (within-species) enhancers vs promoters pipeline (step 5)")
     args = parser.parse_args()
     
     print("="*100)
-    if not args.skip_halper:
+    if not args.skip_step_1:
         print("Step 1: Running HALPER pipeline...")
         success = pipeline.run_halper_pipeline(args.config)
         print("Step 1: HALPER pipeline complete!")
@@ -45,7 +48,7 @@ if __name__ == "__main__":
     print("Step 2: Bedtools preprocess complete!")
     
     print("="*100)
-    if not args.skip_cross_species:
+    if not args.skip_step_2:
         print("Step 3: Running cross-species ortholog open vs closed pipeline...")
         success = pipeline.run_cross_species_open_vs_closed_pipeline(args.config)
         print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
@@ -58,7 +61,7 @@ if __name__ == "__main__":
             success = True
 
     print("="*100)
-    if not args.skip_cross_tissues:
+    if not args.skip_step_4:
         print("Step 4: Running cross-tissues region shared vs species pipeline...")
         success = pipeline.run_cross_tissues_shared_vs_specific_pipeline(args.config)
         print("Step 4: Cross-tissues region shared vs species pipeline complete!")
@@ -66,6 +69,14 @@ if __name__ == "__main__":
         print("Step 4: Skipped cross-tissues region shared vs species pipeline")
 
     print("="*100)
-    print("Step 5: Running cross-tissues (within-species) enhancers vs promoters pipeline...")
-    success = pipeline.run_cross_tissues_enhancer_promoter_pipeline(args.config)
-    print("Step 5: Cross-tissues (within-species) enhancers vs promoters pipeline complete!")
+    if not args.skip_step_5:
+        print("Step 5: Running cross-tissues (within-species) enhancers vs promoters pipeline...")
+        success = pipeline.run_cross_tissues_enhancer_promoter_pipeline(args.config)
+        print("Step 5: Cross-tissues (within-species) enhancers vs promoters pipeline complete!")
+    else:
+        print("Step 5: Skipped cross-tissues (within-species) enhancers vs promoters pipeline")
+
+    print("="*100)
+    print("Step 6: Running cross-species enhancers vs promoters pipeline...")
+    success = pipeline.run_cross_species_enhancer_promoter_pipeline(args.config)
+    print("Step 6: Cross-species enhancers vs promoters pipeline complete!")
