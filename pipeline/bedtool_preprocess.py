@@ -137,7 +137,8 @@ def bedtool_preprocess(config_path: Path) -> None:
             else:
                 raise FileNotFoundError(f"HALPER file {halper_file} or {unzipped_halper_file} does not exist")
         if halper_file.suffix == ".gz":
-            subprocess.run(["gunzip", halper_file])
+            if not halper_file.with_suffix("").exists():
+                subprocess.run(["gunzip", halper_file])
             halper_file = halper_file.with_suffix("")
         # Update the config file with the unzipped file
         config[entry] = str(halper_file)
@@ -151,8 +152,9 @@ def bedtool_preprocess(config_path: Path) -> None:
                   "species_2_organ_2_to_species_1"]:
         halper_file = Path(config[entry])
         cleaned_file = cleaned_dir / halper_file.name
-        with open(cleaned_file, "w") as outfile:
-            subprocess.run(["cut", "-f1-3", str(halper_file)], stdout=outfile)
+        if not cleaned_file.exists():
+            with open(cleaned_file, "w") as outfile:
+                subprocess.run(["cut", "-f1-3", str(halper_file)], stdout=outfile)
         # Update the config file with the cleaned file
         config[entry+"_cleaned"] = str(cleaned_file)
     
@@ -163,8 +165,9 @@ def bedtool_preprocess(config_path: Path) -> None:
                   "species_2_organ_2_peak_file"]:
         peak_file = Path(config[entry])
         cleaned_file = cleaned_dir / peak_file.name
-        with open(cleaned_file, "w") as outfile:
-            subprocess.run(["cut", "-f1-3", str(peak_file)], stdout=outfile)
+        if not cleaned_file.exists():
+            with open(cleaned_file, "w") as outfile:
+                subprocess.run(["cut", "-f1-3", str(peak_file)], stdout=outfile)
         # Update the config file with the cleaned file
         config[entry+"_cleaned"] = str(cleaned_file)
     
