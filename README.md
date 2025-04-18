@@ -88,7 +88,7 @@ Example: Run only Step 2 and Step 3 (assuming Step 1 outputs exist):
 python main.py --config config.yaml --skip-step-1 --skip-step-4 --skip-step-5
 ```
 
-## 4. Pipeline Steps Explained
+## 4. Pipeline Walkthrough
 
 The `main.py` script executes the following steps sequentially:
 
@@ -145,6 +145,12 @@ Examines the evolutionary conservation of different types of regulatory elements
 - Generating statistics on conservation patterns specific to enhancers versus promoters
 
 *Estimated runtime (excluding queuing time): < 30 seconds*
+
+### Additional Step: Functional Enrichment Analysis
+
+We employed the GREAT (Genomic Regions Enrichment of Annotations Tool) to perform functional enrichment analysis of open chromatin regions. To run the enrichment analysis, users need to go to the [GREAT website](https://great.stanford.edu/) and upload corresponding BED files manually.
+
+In our pipeline, we used the Mouse GRCm38 (UCSC mm10, December 2011) assembly as our reference genome. The output files from Step 4 were used as the input for the enrichment analysis to compare the enrichment of open chromatin regions that are conserved across tissues and specific to each tissue.
 
 ## 5. Outputs
 
