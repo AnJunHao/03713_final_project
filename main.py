@@ -48,7 +48,7 @@ if __name__ == "__main__":
     print("Step 2: Bedtools preprocess complete!")
     
     print("="*100)
-    if not args.skip_step_2:
+    if not args.skip_step_3:
         print("Step 3: Running cross-species ortholog open vs closed pipeline...")
         success = pipeline.run_cross_species_open_vs_closed_pipeline(args.config)
         print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
