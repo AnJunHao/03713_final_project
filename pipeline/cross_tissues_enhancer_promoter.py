@@ -4,6 +4,7 @@ from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
+import yaml
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
@@ -90,6 +91,7 @@ class GeneratedScriptOutput(NamedTuple):
     shared_master_script: Path
     output_logs: list[Path]
     error_logs: list[Path]
+    enhancer_promoter_files: dict[str, Path]
 
 def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
@@ -109,32 +111,37 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     shared_scripts: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
-    
+    enhancer_promoter_files: dict[str, Path] = {}
+
     # Define the four combinations for initial classification
     combinations = [
         {
             "species": f"{config.species_1}",
             "tissue": config.organ_1, 
             "peak_file": config.species_1_organ_1_peak_file,
-            "tss_file": config.species_1_tss_file
+            "tss_file": config.species_1_tss_file,
+            "prefix": f"species_1_organ_1"
         },
         {
             "species": f"{config.species_1}",
             "tissue": config.organ_2,
             "peak_file": config.species_1_organ_2_peak_file,
-            "tss_file": config.species_1_tss_file
+            "tss_file": config.species_1_tss_file,
+            "prefix": f"species_1_organ_2"
         },
         {
             "species": f"{config.species_2}",
             "tissue": config.organ_1,
             "peak_file": config.species_2_organ_1_peak_file,
-            "tss_file": config.species_2_tss_file
+            "tss_file": config.species_2_tss_file,
+            "prefix": f"species_2_organ_1"
         },
         {
             "species": f"{config.species_2}",
             "tissue": config.organ_2,
             "peak_file": config.species_2_organ_2_peak_file,
-            "tss_file": config.species_2_tss_file
+            "tss_file": config.species_2_tss_file,
+            "prefix": f"species_2_organ_2"
         }
     ]
     
@@ -144,7 +151,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         tissue = combo["tissue"]
         peak_file = combo["peak_file"]
         tss_file = combo["tss_file"]
-        
+        prefix = combo["prefix"]
         script_path = config.temp_dir / f"enhancer_promoter_{species}_{tissue}.job"
         error_log = config.output_dir / f"enhancer_promoter_{species}_{tissue}.err.txt"
         output_log = config.output_dir / f"enhancer_promoter_{species}_{tissue}.out.txt"
@@ -163,6 +170,8 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         individual_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
+        enhancer_promoter_files[prefix+"_promoters"] = config.output_dir / f"{species}_{tissue}_promoters.bed"
+        enhancer_promoter_files[prefix+"_enhancers"] = config.output_dir / f"{species}_{tissue}_enhancers.bed"
     
     # Create scripts for finding shared regions between tissues (per species)
     shared_combinations = [
@@ -241,6 +250,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         shared_master_script=shared_master_script,
         output_logs=output_logs,
         error_logs=error_logs,
+        enhancer_promoter_files=enhancer_promoter_files
     )
 
 def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) -> None:
@@ -395,6 +405,28 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, individual_
     print("Shared (within-species, cross-tissues) Enhancer-Promoter Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
+def update_config(config_path: Path, enhancer_promoter_files: dict[str, Path]) -> None:
+    """
+    Update the configuration file with the enhancer and promoter files
+    """
+    # Create a backup of the original config file
+    backup_path = Path(f"{config_path}.backup03")
+    with open(config_path, "r") as src:
+        with open(backup_path, "w") as dst:
+            dst.write(src.read())
+    
+    # Read the config file
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    
+    # Update the config file with the enhancer and promoter files
+    for key, value in enhancer_promoter_files.items():
+        config[key] = str(value)
+    
+    # Write the updated config file
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
+
 def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     """
     Run the enhancer vs promoter classification pipeline.
@@ -408,6 +440,8 @@ def run_cross_tissues_enhancer_promoter_pipeline(config_path: Path) -> bool:
     config = load_bedtool_config(config_path, "cross_tissues_enhancers_vs_promoters_output_dir")
     
     script_output = generate_script(config)
+
+    update_config(config_path, script_output.enhancer_promoter_files)
     
     # Clean old output and error logs
     old_log_count = 0

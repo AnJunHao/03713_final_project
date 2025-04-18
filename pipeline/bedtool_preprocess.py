@@ -33,7 +33,17 @@ class BedtoolConfig:
     species_1_to_species_2_organ_2_conserved: Path | None
     species_2_to_species_1_organ_1_conserved: Path | None
     species_2_to_species_1_organ_2_conserved: Path | None
-    
+
+    # Promoter/enhancer files (optional)
+    species_1_organ_1_promoters: Path | None
+    species_1_organ_1_enhancers: Path | None
+    species_1_organ_2_promoters: Path | None
+    species_1_organ_2_enhancers: Path | None
+    species_2_organ_1_promoters: Path | None
+    species_2_organ_1_enhancers: Path | None
+    species_2_organ_2_promoters: Path | None
+    species_2_organ_2_enhancers: Path | None
+
     def __post_init__(self):
         # Check if peak files exist
         for peak_file in [self.species_1_organ_1_peak_file,
@@ -56,7 +66,7 @@ class BedtoolConfig:
                 print(f"Unzipped HALPER file {zipped_halper_file} to {halper_file}")
             assert halper_file.exists(), f"HALPER file {halper_file} does not exist"
         
-        # Check if TSS files exist (if provided)
+        # Check if TSS files exist
         for tss_file_name, tss_file in [("species_1_tss_file", self.species_1_tss_file),
                                       ("species_2_tss_file", self.species_2_tss_file)]:
             if tss_file is not None:
@@ -99,6 +109,7 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
         species_1_tss_file=Path(config["species_1_TSS_file"]),
         species_2_tss_file=Path(config["species_2_TSS_file"]),
+        # Conserved files (optional)
         species_1_to_species_2_organ_1_conserved=Path(config["species_1_to_species_2_organ_1_conserved"])\
             if "species_1_to_species_2_organ_1_conserved" in config else None,
         species_1_to_species_2_organ_2_conserved=Path(config["species_1_to_species_2_organ_2_conserved"])\
@@ -107,6 +118,23 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
             if "species_2_to_species_1_organ_1_conserved" in config else None,
         species_2_to_species_1_organ_2_conserved=Path(config["species_2_to_species_1_organ_2_conserved"])\
             if "species_2_to_species_1_organ_2_conserved" in config else None,
+        # Promoter/enhancer files (optional)
+        species_1_organ_1_promoters=Path(config["species_1_organ_1_promoters"])\
+            if "species_1_organ_1_promoters" in config else None,
+        species_1_organ_1_enhancers=Path(config["species_1_organ_1_enhancers"])\
+            if "species_1_organ_1_enhancers" in config else None,
+        species_1_organ_2_promoters=Path(config["species_1_organ_2_promoters"])\
+            if "species_1_organ_2_promoters" in config else None,
+        species_1_organ_2_enhancers=Path(config["species_1_organ_2_enhancers"])\
+            if "species_1_organ_2_enhancers" in config else None,
+        species_2_organ_1_promoters=Path(config["species_2_organ_1_promoters"])\
+            if "species_2_organ_1_promoters" in config else None,   
+        species_2_organ_1_enhancers=Path(config["species_2_organ_1_enhancers"])\
+            if "species_2_organ_1_enhancers" in config else None,
+        species_2_organ_2_promoters=Path(config["species_2_organ_2_promoters"])\
+            if "species_2_organ_2_promoters" in config else None,
+        species_2_organ_2_enhancers=Path(config["species_2_organ_2_enhancers"])\
+            if "species_2_organ_2_enhancers" in config else None,
     )
 
 def bedtool_preprocess(config_path: Path) -> None:
