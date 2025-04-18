@@ -1,397 +1,379 @@
 from pathlib import Path
 import subprocess
-from typing import NamedTuple, Literal
+from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
-import yaml
 
-# Script template for analyzing conserved regions from one species to another
-CONSERVED_REGIONS_SCRIPT_TEMPLATE = """#!/bin/bash
+script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 0:20:00
+#SBATCH -t 0:10:00
 #SBATCH --ntasks-per-node=1
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
 
 module load bedtools
 
-echo "Processing {species_from}_{organ} to {species_to}_{organ} enhancer-promoter analysis"
+echo "Processing {species_from} to {species_to} {tissue} conserved regions classification"
 
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
-# Sort input files to ensure consistent chromosome ordering
-echo "Sorting input files to ensure consistent chromosome ordering"
-sort -k1,1 -k2,2n {conserved_file} > {output_dir}/{prefix}_conserved.sorted.bed
-sort -k1,1 -k2,2n {tss_file} > {output_dir}/{prefix}_tss.sorted.bed
+# Step 1: Annotate distance to TSS
+echo "[STEP 1] Annotating TSS distance"
+tss_annotated_file={output_dir}/{species_from}_to_{species_to}_{tissue}_conserved.TSS.bed
+bedtools closest -a {conserved_file} \
+                 -b {tss_file} \
+                 -d -t first > $tss_annotated_file
 
-# Step 1: Find nearest TSS for conserved regions
-echo "[STEP 1] Finding nearest TSS for conserved regions"
-bedtools closest -a {output_dir}/{prefix}_conserved.sorted.bed \\
-                -b {output_dir}/{prefix}_tss.sorted.bed \\
-                -d > {output_dir}/{prefix}_conserved.TSS.bed
+# Step 2: Classify as promoters vs enhancers
+echo "[STEP 2] Classifying enhancers and promoters"
+promoters_file={output_dir}/{species_from}_to_{species_to}_{tissue}_conserved_promoters.bed
+enhancers_file={output_dir}/{species_from}_to_{species_to}_{tissue}_conserved_enhancers.bed
+awk '$NF <= 5000' $tss_annotated_file > $promoters_file
+awk '$NF > 5000' $tss_annotated_file > $enhancers_file
 
-# Step 2: Categorize as promoters (<=5000bp from TSS) or enhancers (>5000bp from TSS)
-echo "[STEP 2] Categorizing as promoters or enhancers"
-awk '$NF <= 5000' {output_dir}/{prefix}_conserved.TSS.bed > {output_dir}/{prefix}_conserved_promoters.bed
-awk '$NF > 5000' {output_dir}/{prefix}_conserved.TSS.bed > {output_dir}/{prefix}_conserved_enhancers.bed
+# Step 3: Count peaks
+echo "[STEP 3] Counting peaks"
+total_conserved=$(wc -l {conserved_file} | awk '{{print $1}}')
+promoters=$(wc -l $promoters_file | awk '{{print $1}}')
+enhancers=$(wc -l $enhancers_file | awk '{{print $1}}')
 
-# Step 3: Report counts
-echo "[STEP 3] Counting results"
-total_regions=$(wc -l {conserved_file} | awk '{{print $1}}')
-promoters=$(wc -l {output_dir}/{prefix}_conserved_promoters.bed | awk '{{print $1}}')
-enhancers=$(wc -l {output_dir}/{prefix}_conserved_enhancers.bed | awk '{{print $1}}')
-
-echo "Total conserved regions: $total_regions"
-echo "Promoters (<=5000bp from TSS): $promoters"
-echo "Enhancers (>5000bp from TSS): $enhancers"
-
-# Clean up intermediate sorted files
-rm {output_dir}/{prefix}_conserved.sorted.bed {output_dir}/{prefix}_tss.sorted.bed
+echo "Total {species_from} to {species_to} {tissue} conserved regions: $total_conserved"
+echo "Promoters: $promoters"
+echo "Enhancers: $enhancers"
 
 echo "Job finished"
 """
 
-# Script template for identifying shared elements across species
-SHARED_ELEMENTS_SCRIPT_TEMPLATE = """#!/bin/bash
+shared_regions_script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 0:15:00
+#SBATCH -t 0:10:00
 #SBATCH --ntasks-per-node=1
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
 
 module load bedtools
 
-echo "Processing shared {organ} enhancers/promoters across species analysis"
+echo "Processing {tissue} shared enhancers/promoters across species"
 
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
-# Sort input files to ensure consistent chromosome ordering
-echo "Sorting input files to ensure consistent chromosome ordering"
-sort -k1,1 -k2,2n {species_1_to_species_2_promoters} > {output_dir}/temp_{organ}_s1_to_s2_promoters.sorted.bed
-sort -k1,1 -k2,2n {species_1_to_species_2_enhancers} > {output_dir}/temp_{organ}_s1_to_s2_enhancers.sorted.bed
-sort -k1,1 -k2,2n {species_2_native_promoters} > {output_dir}/temp_{organ}_s2_promoters.sorted.bed
-sort -k1,1 -k2,2n {species_2_native_enhancers} > {output_dir}/temp_{organ}_s2_enhancers.sorted.bed
+# Step 1: Find shared promoters/enhancers between species
+echo "[STEP 1] Finding shared promoters/enhancers across species"
+shared_promoters_file={output_dir}/{tissue}_promoters_shared_across_species.bed
+shared_enhancers_file={output_dir}/{tissue}_enhancers_shared_across_species.bed
 
-# Step 1: Find shared promoters across species
-echo "[STEP 1] Finding shared promoters across species"
-bedtools intersect -a {output_dir}/temp_{organ}_s1_to_s2_promoters.sorted.bed \\
-                  -b {output_dir}/temp_{organ}_s2_promoters.sorted.bed \\
-                  -u > {output_dir}/{organ}_promoters_shared_across_species.bed
+bedtools intersect -a {from_to_conserved_promoters} \
+                   -b {to_native_promoters} \
+                   -u > $shared_promoters_file
 
-# Step 2: Find shared enhancers across species
-echo "[STEP 2] Finding shared enhancers across species"
-bedtools intersect -a {output_dir}/temp_{organ}_s1_to_s2_enhancers.sorted.bed \\
-                  -b {output_dir}/temp_{organ}_s2_enhancers.sorted.bed \\
-                  -u > {output_dir}/{organ}_enhancers_shared_across_species.bed
+bedtools intersect -a {from_to_conserved_enhancers} \
+                   -b {to_native_enhancers} \
+                   -u > $shared_enhancers_file
 
-# Step 3: Report counts
-echo "[STEP 3] Counting results"
-total_promoters=$(wc -l {species_1_to_species_2_promoters} | awk '{{print $1}}')
-shared_promoters=$(wc -l {output_dir}/{organ}_promoters_shared_across_species.bed | awk '{{print $1}}')
-total_enhancers=$(wc -l {species_1_to_species_2_enhancers} | awk '{{print $1}}')
-shared_enhancers=$(wc -l {output_dir}/{organ}_enhancers_shared_across_species.bed | awk '{{print $1}}')
+# Step 2: Count shared elements
+echo "[STEP 2] Counting shared elements"
+shared_promoters=$(wc -l $shared_promoters_file | awk '{{print $1}}')
+shared_enhancers=$(wc -l $shared_enhancers_file | awk '{{print $1}}')
 
-echo "Total conserved promoters: $total_promoters"
-echo "Shared promoters across species: $shared_promoters"
-echo "Shared promoters percentage: $(echo "scale=2; $shared_promoters/$total_promoters*100" | bc)%"
-echo "Total conserved enhancers: $total_enhancers"
-echo "Shared enhancers across species: $shared_enhancers"
-echo "Shared enhancers percentage: $(echo "scale=2; $shared_enhancers/$total_enhancers*100" | bc)%"
-
-# Clean up intermediate sorted files
-rm {output_dir}/temp_{organ}_s1_to_s2_promoters.sorted.bed
-rm {output_dir}/temp_{organ}_s1_to_s2_enhancers.sorted.bed
-rm {output_dir}/temp_{organ}_s2_promoters.sorted.bed
-rm {output_dir}/temp_{organ}_s2_enhancers.sorted.bed
+echo "{tissue} shared promoters across species: $shared_promoters"
+echo "{tissue} shared enhancers across species: $shared_enhancers"
 
 echo "Job finished"
 """
 
-class EnhancerPromoterOutput(NamedTuple):
-    stage1_script: Path
-    stage2_script: Path
+class GeneratedScriptOutput(NamedTuple):
+    classification_master_script: Path
+    shared_master_script: Path
     output_logs: list[Path]
     error_logs: list[Path]
-    stage1_logs: list[Path]
-    stage2_logs: list[Path]
-    promoter_files: dict[str, Path]
-    enhancer_files: dict[str, Path]
 
-def generate_scripts(config: BedtoolConfig) -> EnhancerPromoterOutput:
+def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
-    Generate scripts to run the cross-species enhancer-promoter analysis.
-
+    Generate scripts to run the cross-species enhancer vs promoter analysis
+    
     Args:
-        config: A BedtoolConfig object.
-
+        config: A BedtoolConfig object with conserved files and TSS files
+        
     Returns:
-        An EnhancerPromoterOutput object containing paths to scripts and output files
+        A GeneratedScriptOutput object containing paths to the master script and log files
     """
-    stage1_scripts: list[Path] = []
-    stage2_scripts: list[Path] = []
-    all_scripts: list[Path] = []
+    # Validate that conserved files and TSS files exist
+    assert config.species_1_tss_file is not None, "species_1_tss_file is required but not provided in config"
+    assert config.species_2_tss_file is not None, "species_2_tss_file is required but not provided in config"
+    assert config.species_1_to_species_2_organ_1_conserved is not None, "species_1_to_species_2_organ_1_conserved is required but not provided in config"
+    assert config.species_1_to_species_2_organ_2_conserved is not None, "species_1_to_species_2_organ_2_conserved is required but not provided in config"
+    assert config.species_2_to_species_1_organ_1_conserved is not None, "species_2_to_species_1_organ_1_conserved is required but not provided in config"
+    assert config.species_2_to_species_1_organ_2_conserved is not None, "species_2_to_species_1_organ_2_conserved is required but not provided in config"
+    
+    classification_scripts: list[Path] = []
+    shared_scripts: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
-    stage1_logs: list[Path] = []
-    stage2_logs: list[Path] = []
-    promoter_files: dict[str, Path] = {}
-    enhancer_files: dict[str, Path] = {}
     
-    # Define the four combinations for conserved regions analysis (STAGE 1)
+    # Define the four combinations for initial classification (all directions)
     combinations = [
         {
-            "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_1}",
             "species_from": config.species_1,
             "species_to": config.species_2,
-            "organ": config.organ_1,
+            "tissue": config.organ_1,
             "conserved_file": config.species_1_to_species_2_organ_1_conserved,
-            "tss_file": config.species_2_tss_file
+            "tss_file": config.species_2_tss_file,  # Use the target species TSS file
         },
         {
-            "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_2}",
             "species_from": config.species_1,
             "species_to": config.species_2,
-            "organ": config.organ_2,
+            "tissue": config.organ_2,
             "conserved_file": config.species_1_to_species_2_organ_2_conserved,
-            "tss_file": config.species_2_tss_file
+            "tss_file": config.species_2_tss_file,
         },
         {
-            "prefix": f"{config.species_2}_to_{config.species_1}_{config.organ_1}",
             "species_from": config.species_2,
             "species_to": config.species_1,
-            "organ": config.organ_1,
+            "tissue": config.organ_1,
             "conserved_file": config.species_2_to_species_1_organ_1_conserved,
-            "tss_file": config.species_1_tss_file
+            "tss_file": config.species_1_tss_file,
         },
         {
-            "prefix": f"{config.species_2}_to_{config.species_1}_{config.organ_2}",
             "species_from": config.species_2,
             "species_to": config.species_1,
-            "organ": config.organ_2,
+            "tissue": config.organ_2,
             "conserved_file": config.species_2_to_species_1_organ_2_conserved,
-            "tss_file": config.species_1_tss_file
+            "tss_file": config.species_1_tss_file,
         }
     ]
     
-    # Create scripts for each conserved region combination (STAGE 1)
+    # Create scripts for each combination
     for combo in combinations:
-        prefix = combo["prefix"]
+        species_from = combo["species_from"]
+        species_to = combo["species_to"]
+        tissue = combo["tissue"]
+        conserved_file = combo["conserved_file"]
+        tss_file = combo["tss_file"]
         
-        script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
-        error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
-        output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
-        promoter_file = config.output_dir / f"{prefix}_conserved_promoters.bed"
-        enhancer_file = config.output_dir / f"{prefix}_conserved_enhancers.bed"
+        script_path = config.temp_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.job"
+        error_log = config.output_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.err.txt"
+        output_log = config.output_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.out.txt"
         
         with open(script_path, "w") as f:
-            f.write(CONSERVED_REGIONS_SCRIPT_TEMPLATE.format(
-                prefix=prefix,
-                species_from=combo["species_from"],
-                species_to=combo["species_to"],
-                organ=combo["organ"],
-                conserved_file=combo["conserved_file"],
-                tss_file=combo["tss_file"],
+            f.write(script_template.format(
+                species_from=species_from,
+                species_to=species_to,
+                tissue=tissue,
+                conserved_file=conserved_file,
+                tss_file=tss_file,
                 output_dir=config.output_dir,
                 error_log=error_log,
                 output_log=output_log
             ))
         
-        stage1_scripts.append(script_path)
-        all_scripts.append(script_path)
+        classification_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
-        stage1_logs.append(output_log)
-        
-        # Store the output files for later use
-        promoter_files[prefix] = promoter_file
-        enhancer_files[prefix] = enhancer_file
     
-    # Create shared analysis scripts for each organ (STAGE 2)
-    for organ in [config.organ_1, config.organ_2]:
-        prefix = f"shared_{organ}"
-        script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
-        error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
-        output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
+    # Create scripts for finding shared regions across species (per tissue)
+    shared_combinations = [
+        {
+            "tissue": config.organ_1,
+            "from_species": config.species_1,
+            "to_species": config.species_2,
+        },
+        {
+            "tissue": config.organ_2,
+            "from_species": config.species_1,
+            "to_species": config.species_2,
+        }
+    ]
+    
+    for combo in shared_combinations:
+        tissue = combo["tissue"]
+        from_species = combo["from_species"]
+        to_species = combo["to_species"]
         
-        species_1_to_species_2_prefix = f"{config.species_1}_to_{config.species_2}_{organ}"
-        species_2_to_species_1_prefix = f"{config.species_2}_to_{config.species_1}_{organ}"
+        script_path = config.temp_dir / f"cross_species_shared_enhancer_promoter_{tissue}.job"
+        error_log = config.output_dir / f"cross_species_shared_enhancer_promoter_{tissue}.err.txt"
+        output_log = config.output_dir / f"cross_species_shared_enhancer_promoter_{tissue}.out.txt"
         
         with open(script_path, "w") as f:
-            f.write(SHARED_ELEMENTS_SCRIPT_TEMPLATE.format(
-                organ=organ,
-                species_1_to_species_2_promoters=promoter_files[species_1_to_species_2_prefix],
-                species_1_to_species_2_enhancers=enhancer_files[species_1_to_species_2_prefix],
-                species_2_native_promoters=promoter_files[species_2_to_species_1_prefix],
-                species_2_native_enhancers=enhancer_files[species_2_to_species_1_prefix],
+            f.write(shared_regions_script_template.format(
+                tissue=tissue,
+                from_to_conserved_promoters=f"{config.output_dir}/{from_species}_to_{to_species}_{tissue}_conserved_promoters.bed",
+                to_native_promoters=f"{config.output_dir}/{to_species}_{tissue}_promoters.bed",
+                from_to_conserved_enhancers=f"{config.output_dir}/{from_species}_to_{to_species}_{tissue}_conserved_enhancers.bed",
+                to_native_enhancers=f"{config.output_dir}/{to_species}_{tissue}_enhancers.bed",
                 output_dir=config.output_dir,
                 error_log=error_log,
                 output_log=output_log
             ))
         
-        stage2_scripts.append(script_path)
-        all_scripts.append(script_path)
+        shared_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
-        stage2_logs.append(output_log)
     
-    # Create master script for stage 1 (conserved regions analysis)
-    stage1_master_script = config.temp_dir / "submit_enhancer_promoter_stage1_jobs.sh"
-    with open(stage1_master_script, "w") as f:
+    # Create master script to submit all classification jobs
+    classification_master_script = config.temp_dir / "submit_all_cross_species_classification_jobs.sh"
+    with open(classification_master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
-        f.write("echo 'Submitting conserved regions enhancer-promoter analysis jobs...'\n")
-        for script in stage1_scripts:
+        f.write("echo 'Submitting all cross-species enhancer-promoter classification jobs...'\n")
+        for script in classification_scripts:
             f.write(f"sbatch {script}\n")
-        f.write("echo 'All conserved regions jobs submitted'\n")
+        f.write("echo 'All jobs submitted'\n")
     
-    # Create master script for stage 2 (shared analysis)
-    stage2_master_script = config.temp_dir / "submit_enhancer_promoter_stage2_jobs.sh"
-    with open(stage2_master_script, "w") as f:
+    classification_master_script.chmod(0o755)  # Make the master script executable
+
+    # Create master script to submit all shared region jobs
+    shared_master_script = config.temp_dir / "submit_all_cross_species_shared_region_jobs.sh"
+    with open(shared_master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
-        f.write("echo 'Submitting shared analysis jobs...'\n")
-        for script in stage2_scripts:
+        f.write("echo 'Submitting all cross-species shared enhancer-promoter jobs...'\n")
+        for script in shared_scripts:
             f.write(f"sbatch {script}\n")
-        f.write("echo 'All shared analysis jobs submitted'\n")
+        f.write("echo 'All jobs submitted'\n")
     
-    # Make the master scripts executable
-    stage1_master_script.chmod(0o755)
-    stage2_master_script.chmod(0o755)
-    
-    return EnhancerPromoterOutput(
-        stage1_script=stage1_master_script,
-        stage2_script=stage2_master_script,
+    shared_master_script.chmod(0o755)  # Make the master script executable
+
+    return GeneratedScriptOutput(
+        classification_master_script=classification_master_script,
+        shared_master_script=shared_master_script,
         output_logs=output_logs,
         error_logs=error_logs,
-        stage1_logs=stage1_logs,
-        stage2_logs=stage2_logs,
-        promoter_files=promoter_files,
-        enhancer_files=enhancer_files
     )
 
-def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) -> None:
+def extract_classification_counts(output_logs: list[Path], output_csv: Path) -> None:
     """
-    Extract enhancer and promoter counts from output logs and save them to a CSV file.
+    Extract enhancer and promoter counts from cross-species classification output logs and save to a CSV file
     
     Args:
-        output_logs: List of paths to output log files
+        output_logs: List of output log paths
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Analysis", "Total_Peaks", "Promoters", "Promoters_Pct", "Enhancers", "Enhancers_Pct"]
+    headers = ["Species From", "Species To", "Tissue", "Total Conserved", "Promoters", "Enhancers"]
     
-    with open(output_csv, 'w') as f:
-        f.write("Analysis,Total_Peaks,Promoters,Promoters_Pct,Enhancers,Enhancers_Pct\n")
-        
-        for log_file in output_logs:
-            if not log_file.exists():
-                print(f"Warning: Log file {log_file} does not exist, skipping")
-                continue
-                
-            prefix = log_file.stem.replace("enhancer_promoter_", "").replace(".out", "")
-            total_peaks = 0
-            promoters = 0
-            enhancers = 0
-            promoters_pct = 0
-            enhancers_pct = 0
+    for log_file in output_logs:
+        # Only process logs from classification jobs (not shared region jobs)
+        if "cross_species_enhancer_promoter" in log_file.name and "shared" not in log_file.name:
+            species_from = None
+            species_to = None
+            tissue = None
+            total_conserved = None
+            promoters = None
+            enhancers = None
             
-            with open(log_file, 'r') as log:
-                for line in log:
-                    if "Total conserved regions:" in line or "Total peaks:" in line:
-                        total_peaks = int(line.strip().split()[-1])
-                    elif "Promoters (<=5000bp from TSS):" in line:
-                        promoters = int(line.strip().split()[-1])
-                    elif "Enhancers (>5000bp from TSS):" in line:
-                        enhancers = int(line.strip().split()[-1])
-                    elif "Promoters percentage:" in line:
-                        promoters_pct = float(line.strip().split()[-1].strip('%'))
-                    elif "Enhancers percentage:" in line:
-                        enhancers_pct = float(line.strip().split()[-1].strip('%'))
-                    elif "Shared promoters percentage:" in line:
-                        promoters_pct = float(line.strip().split()[-1].strip('%'))
-                    elif "Shared enhancers percentage:" in line:
-                        enhancers_pct = float(line.strip().split()[-1].strip('%'))
+            with open(log_file, "r") as f:
+                for line in f:
+                    if "Processing" in line and "conserved regions classification" in line:
+                        parts = line.strip().split()
+                        species_from = parts[1]
+                        species_to = parts[3]
+                        tissue = parts[4]
+                    elif "Total" in line and "conserved regions" in line:
+                        total_conserved = line.strip().split(":")[-1].strip()
+                    elif "Promoters:" in line:
+                        promoters = line.strip().split(":")[-1].strip()
+                    elif "Enhancers:" in line:
+                        enhancers = line.strip().split(":")[-1].strip()
             
-            if promoters_pct == 0 and total_peaks > 0:
-                promoters_pct = round(promoters / total_peaks * 100, 2)
-            if enhancers_pct == 0 and total_peaks > 0:
-                enhancers_pct = round(enhancers / total_peaks * 100, 2)
-            
-            f.write(f"{prefix},{total_peaks},{promoters},{promoters_pct},{enhancers},{enhancers_pct}\n")
-            data.append([prefix, total_peaks, promoters, f"{promoters_pct}%", enhancers, f"{enhancers_pct}%"])
+            if species_from and species_to and tissue and total_conserved and promoters and enhancers:
+                data.append([species_from, species_to, tissue, total_conserved, promoters, enhancers])
     
-    print(f"Enhancer-Promoter summary saved to {output_csv}")
-    print("Enhancer-Promoter Summary:")
+    # Write to CSV
+    with open(output_csv, "w") as f:
+        f.write(",".join(headers) + "\n")
+        for row in data:
+            f.write(",".join(row) + "\n")
+    
+    # Print a summary table
+    print("\nCross-Species Enhancer-Promoter Classification Results:")
+    print(tabulate(data, headers=headers, tablefmt="grid"))
+
+def extract_shared_counts(output_logs: list[Path], output_csv: Path, classification_csv: Path) -> None:
+    """
+    Extract shared enhancer and promoter counts across species from output logs and save to a CSV file
+    
+    Args:
+        output_logs: List of output log paths
+        output_csv: Path to save the CSV file
+        classification_csv: Path to the classification CSV file (for reference)
+    """
+    data = []
+    headers = ["Tissue", "Shared Promoters", "Shared Enhancers"]
+    
+    for log_file in output_logs:
+        # Only process logs from shared region jobs
+        if "cross_species_shared_enhancer_promoter" in log_file.name:
+            tissue = None
+            shared_promoters = None
+            shared_enhancers = None
+            
+            with open(log_file, "r") as f:
+                for line in f:
+                    if "Processing" in line and "shared enhancers/promoters across species" in line:
+                        parts = line.strip().split()
+                        tissue = parts[1]
+                    elif "shared promoters across species" in line:
+                        shared_promoters = line.strip().split(":")[-1].strip()
+                    elif "shared enhancers across species" in line:
+                        shared_enhancers = line.strip().split(":")[-1].strip()
+            
+            if tissue and shared_promoters and shared_enhancers:
+                data.append([tissue, shared_promoters, shared_enhancers])
+    
+    # Write to CSV
+    with open(output_csv, "w") as f:
+        f.write(",".join(headers) + "\n")
+        for row in data:
+            f.write(",".join(row) + "\n")
+    
+    # Print a summary table
+    print("\nCross-Species Shared Enhancer-Promoter Results:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
 def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     """
-    Run the cross-species enhancer-promoter analysis pipeline.
-
+    Run the cross-species enhancer promoter pipeline
+    
     Args:
-        config_path: Path to the configuration file.
+        config_path: Path to the config file
         
     Returns:
-        True if the pipeline ran successfully, False otherwise.
+        True if the pipeline completed successfully, False otherwise
     """
-    config = load_bedtool_config(config_path, "cross_species_enhancers_vs_promoters_output_dir")
-    script_output = generate_scripts(config)
-
-    # Clean old output logs
-    old_log_count = 0
-    for log in script_output.output_logs + script_output.error_logs:
-        if log.exists():
-            log.unlink()
-            old_log_count += 1
-    if old_log_count > 0:
-        print(f"Deleted {old_log_count} old log files")
+    print("\n================ Running Cross-Species Enhancer Promoter Pipeline ================\n")
     
-    # Submit stage 1 jobs
-    print("Submitting stage 1 jobs (conserved regions analysis)...")
-    result = subprocess.run(["bash", str(script_output.stage1_script)], check=True, capture_output=True, text=True)
+    # Load config file
+    config = load_bedtool_config(config_path, "cross_species_enhancer_promoter_output_dir")
     
-    if result.stdout:
-        print(f"{result.stdout}")
-    if result.stderr:
-        print(f"{result.stderr}")
+    # Generate scripts
+    script_output = generate_script(config)
+    
+    # Run classification jobs first
+    subprocess.run([script_output.classification_master_script])
+    
+    # Wait for classification jobs to complete
+    print("\nWaiting for cross-species classification jobs to complete...")
+    if not monitor_jobs(script_output.output_logs[:4], script_output.error_logs[:4]):
+        print("Error: Some cross-species classification jobs failed.")
         return False
     
-    # Monitor stage 1 jobs
-    print("Monitoring stage 1 jobs...")
-    try:
-        stage1_success = monitor_jobs(script_output.stage1_logs, [log for log in script_output.error_logs if log.stem.replace(".err", "") in [out_log.stem.replace(".out", "") for out_log in script_output.stage1_logs]])
-    except KeyboardInterrupt:
-        print("Keyboard interrupt detected. Jobs will still run.")
-        raise KeyboardInterrupt
+    # Extract and save classification counts
+    classification_csv = config.output_dir / "cross_species_classification_counts.csv"
+    extract_classification_counts(script_output.output_logs, classification_csv)
     
-    if not stage1_success:
-        print("Stage 1 jobs failed. Aborting pipeline.")
+    # Run shared region jobs
+    subprocess.run([script_output.shared_master_script])
+    
+    # Wait for shared region jobs to complete
+    print("\nWaiting for cross-species shared region jobs to complete...")
+    if not monitor_jobs(script_output.output_logs[4:], script_output.error_logs[4:]):
+        print("Error: Some cross-species shared region jobs failed.")
         return False
     
-    # Submit stage 2 jobs
-    print("Submitting stage 2 jobs (shared analysis)...")
-    result = subprocess.run(["bash", str(script_output.stage2_script)], check=True, capture_output=True, text=True)
+    # Extract and save shared counts
+    shared_csv = config.output_dir / "cross_species_shared_counts.csv"
+    extract_shared_counts(script_output.output_logs, shared_csv, classification_csv)
     
-    if result.stdout:
-        print(f"{result.stdout}")
-    if result.stderr:
-        print(f"{result.stderr}")
-        return False
-    
-    # Monitor stage 2 jobs
-    print("Monitoring stage 2 jobs...")
-    try:
-        stage2_success = monitor_jobs(script_output.stage2_logs, [log for log in script_output.error_logs if log.stem.replace(".err", "") in [out_log.stem.replace(".out", "") for out_log in script_output.stage2_logs]])
-    except KeyboardInterrupt:
-        print("Keyboard interrupt detected. Jobs will still run.")
-        raise KeyboardInterrupt
-    
-    # If jobs completed successfully, create a summary CSV
-    if stage2_success:
-        csv_output = config.output_dir / f"{config.species_1}_{config.species_2}_enhancer_promoter_summary.csv"
-        extract_enhancer_promoter_counts(script_output.output_logs, csv_output)
-        return True
-    else:
-        print("Stage 2 jobs failed.")
-        return False
+    print("\nCross-species enhancer promoter pipeline completed successfully!")
+    return True
