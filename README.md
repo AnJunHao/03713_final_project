@@ -146,6 +146,10 @@ Examines the evolutionary conservation of different types of regulatory elements
 
 *Estimated runtime (excluding queuing time): < 30 seconds*
 
+### Step 7: Motif Alignment
+
+NOTE: this task is still a work in progress (the code/information associated with this task will be included in the final github repo/readme file)
+
 ### Additional Step: Functional Enrichment Analysis
 
 We employed the GREAT (Genomic Regions Enrichment of Annotations Tool) to perform functional enrichment analysis of open chromatin regions. To run the enrichment analysis, users need to go to the [GREAT website](https://great.stanford.edu/) and upload corresponding BED files manually.
