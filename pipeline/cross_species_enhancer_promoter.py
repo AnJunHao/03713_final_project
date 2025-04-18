@@ -41,10 +41,15 @@ echo "Processing {species_from}_{organ} to {species_to}_{organ} enhancer-promote
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
+# Sort input files to ensure consistent chromosome ordering
+echo "Sorting input files to ensure consistent chromosome ordering"
+sort -k1,1 -k2,2n {conserved_file} > {output_dir}/{prefix}_conserved.sorted.bed
+sort -k1,1 -k2,2n {tss_file} > {output_dir}/{prefix}_tss.sorted.bed
+
 # Step 1: Find nearest TSS for conserved regions
 echo "[STEP 1] Finding nearest TSS for conserved regions"
-bedtools closest -a {conserved_file} \\
-                -b {tss_file} \\
+bedtools closest -a {output_dir}/{prefix}_conserved.sorted.bed \\
+                -b {output_dir}/{prefix}_tss.sorted.bed \\
                 -d > {output_dir}/{prefix}_conserved.TSS.bed
 
 # Step 2: Categorize as promoters (<=5000bp from TSS) or enhancers (>5000bp from TSS)
@@ -61,6 +66,9 @@ enhancers=$(wc -l {output_dir}/{prefix}_conserved_enhancers.bed | awk '{{print $
 echo "Total conserved regions: $total_regions"
 echo "Promoters (<=5000bp from TSS): $promoters"
 echo "Enhancers (>5000bp from TSS): $enhancers"
+
+# Clean up intermediate sorted files
+rm {output_dir}/{prefix}_conserved.sorted.bed {output_dir}/{prefix}_tss.sorted.bed
 
 echo "Job finished"
 """
@@ -79,16 +87,23 @@ echo "Processing shared {organ} enhancers/promoters across species analysis"
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
+# Sort input files to ensure consistent chromosome ordering
+echo "Sorting input files to ensure consistent chromosome ordering"
+sort -k1,1 -k2,2n {species_1_to_species_2_promoters} > {output_dir}/temp_{organ}_s1_to_s2_promoters.sorted.bed
+sort -k1,1 -k2,2n {species_1_to_species_2_enhancers} > {output_dir}/temp_{organ}_s1_to_s2_enhancers.sorted.bed
+sort -k1,1 -k2,2n {species_2_native_promoters} > {output_dir}/temp_{organ}_s2_promoters.sorted.bed
+sort -k1,1 -k2,2n {species_2_native_enhancers} > {output_dir}/temp_{organ}_s2_enhancers.sorted.bed
+
 # Step 1: Find shared promoters across species
 echo "[STEP 1] Finding shared promoters across species"
-bedtools intersect -a {species_1_to_species_2_promoters} \\
-                  -b {species_2_native_promoters} \\
+bedtools intersect -a {output_dir}/temp_{organ}_s1_to_s2_promoters.sorted.bed \\
+                  -b {output_dir}/temp_{organ}_s2_promoters.sorted.bed \\
                   -u > {output_dir}/{organ}_promoters_shared_across_species.bed
 
 # Step 2: Find shared enhancers across species
 echo "[STEP 2] Finding shared enhancers across species"
-bedtools intersect -a {species_1_to_species_2_enhancers} \\
-                  -b {species_2_native_enhancers} \\
+bedtools intersect -a {output_dir}/temp_{organ}_s1_to_s2_enhancers.sorted.bed \\
+                  -b {output_dir}/temp_{organ}_s2_enhancers.sorted.bed \\
                   -u > {output_dir}/{organ}_enhancers_shared_across_species.bed
 
 # Step 3: Report counts
@@ -104,6 +119,12 @@ echo "Shared promoters percentage: $(echo "scale=2; $shared_promoters/$total_pro
 echo "Total conserved enhancers: $total_enhancers"
 echo "Shared enhancers across species: $shared_enhancers"
 echo "Shared enhancers percentage: $(echo "scale=2; $shared_enhancers/$total_enhancers*100" | bc)%"
+
+# Clean up intermediate sorted files
+rm {output_dir}/temp_{organ}_s1_to_s2_promoters.sorted.bed
+rm {output_dir}/temp_{organ}_s1_to_s2_enhancers.sorted.bed
+rm {output_dir}/temp_{organ}_s2_promoters.sorted.bed
+rm {output_dir}/temp_{organ}_s2_enhancers.sorted.bed
 
 echo "Job finished"
 """
@@ -148,10 +169,15 @@ echo "Processing {species_name}_{organ} native enhancer-promoter analysis"
 # Create output directory if it doesn't exist
 mkdir -p {config.output_dir}
 
+# Sort input files to ensure consistent chromosome ordering
+echo "Sorting input files to ensure consistent chromosome ordering"
+sort -k1,1 -k2,2n {peak_file} > {config.output_dir}/{prefix}_peaks.sorted.bed
+sort -k1,1 -k2,2n {tss_file} > {config.output_dir}/{prefix}_tss.sorted.bed
+
 # Step 1: Find nearest TSS for peaks
 echo "[STEP 1] Finding nearest TSS for peaks"
-bedtools closest -a {peak_file} \\
-                -b {tss_file} \\
+bedtools closest -a {config.output_dir}/{prefix}_peaks.sorted.bed \\
+                -b {config.output_dir}/{prefix}_tss.sorted.bed \\
                 -d > {config.output_dir}/{prefix}_TSS_annotated.bed
 
 # Step 2: Categorize as promoters (<=5000bp from TSS) or enhancers (>5000bp from TSS)
@@ -170,6 +196,9 @@ echo "Promoters (<=5000bp from TSS): $promoters"
 echo "Enhancers (>5000bp from TSS): $enhancers"
 echo "Promoters percentage: $(echo "scale=2; $promoters/$total_peaks*100" | bc)%"
 echo "Enhancers percentage: $(echo "scale=2; $enhancers/$total_peaks*100" | bc)%"
+
+# Clean up intermediate sorted files
+rm {config.output_dir}/{prefix}_peaks.sorted.bed {config.output_dir}/{prefix}_tss.sorted.bed
 
 echo "Job finished"
 """)
