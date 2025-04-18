@@ -440,6 +440,14 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     
     # Generate scripts
     script_output = generate_script(config)
+
+    old_log_count = 0
+    for log in script_output.output_logs + script_output.error_logs:
+        if log.exists():
+            log.unlink()
+            old_log_count += 1
+    if old_log_count > 0:
+        print(f"Deleted {old_log_count} old log files")
     
     # Run classification jobs first
     subprocess.run([script_output.classification_master_script])
