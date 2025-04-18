@@ -6,7 +6,28 @@ from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
 import yaml
 
-script_template = """#!/bin/bash
+class EnhancerPromoterOutput(NamedTuple):
+    stage1_script: Path
+    stage2_script: Path
+    output_logs: list[Path]
+    error_logs: list[Path]
+    stage1_logs: list[Path]
+    stage2_logs: list[Path]
+    promoter_files: dict[str, Path]
+    enhancer_files: dict[str, Path]
+
+def generate_scripts(config: BedtoolConfig) -> EnhancerPromoterOutput:
+    """
+    Generate scripts to run the enhancer-promoter analysis for different species and organ combinations.
+
+    Args:
+        config: A BedtoolConfig object.
+
+    Returns:
+        An EnhancerPromoterOutput object containing paths to scripts and output files
+    """
+    # Define script templates inside the function
+    script_template = """#!/bin/bash
 #SBATCH -p RM-shared
 #SBATCH -t 0:20:00
 #SBATCH --ntasks-per-node=1
@@ -44,7 +65,7 @@ echo "Enhancers (>5000bp from TSS): $enhancers"
 echo "Job finished"
 """
 
-shared_script_template = """#!/bin/bash
+    shared_script_template = """#!/bin/bash
 #SBATCH -p RM-shared
 #SBATCH -t 0:15:00
 #SBATCH --ntasks-per-node=1
@@ -86,124 +107,18 @@ echo "Shared enhancers percentage: $(echo "scale=2; $shared_enhancers/$total_enh
 
 echo "Job finished"
 """
-
-class EnhancerPromoterOutput(NamedTuple):
-    script: Path
-    output_logs: list[Path]
-    error_logs: list[Path]
-    promoter_files: dict[str, Path]
-    enhancer_files: dict[str, Path]
-
-def generate_scripts(config: BedtoolConfig) -> EnhancerPromoterOutput:
-    """
-    Generate scripts to run the enhancer-promoter analysis for different species and organ combinations.
-
-    Args:
-        config: A BedtoolConfig object.
-
-    Returns:
-        An EnhancerPromoterOutput object containing paths to scripts and output files
-    """
-    script_paths: list[Path] = []
+    
+    stage1_scripts: list[Path] = []
+    stage2_scripts: list[Path] = []
+    all_scripts: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
+    stage1_logs: list[Path] = []
+    stage2_logs: list[Path] = []
     promoter_files: dict[str, Path] = {}
     enhancer_files: dict[str, Path] = {}
     
-    # Define the four combinations for conserved regions analysis
-    combinations = [
-        {
-            "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_1}",
-            "species_from": config.species_1,
-            "species_to": config.species_2,
-            "organ": config.organ_1,
-            "conserved_file": config.species_1_to_species_2_organ_1_conserved,
-            "tss_file": config.species_2_tss_file
-        },
-        {
-            "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_2}",
-            "species_from": config.species_1,
-            "species_to": config.species_2,
-            "organ": config.organ_2,
-            "conserved_file": config.species_1_to_species_2_organ_2_conserved,
-            "tss_file": config.species_2_tss_file
-        },
-        {
-            "prefix": f"{config.species_2}_to_{config.species_1}_{config.organ_1}",
-            "species_from": config.species_2,
-            "species_to": config.species_1,
-            "organ": config.organ_1,
-            "conserved_file": config.species_2_to_species_1_organ_1_conserved,
-            "tss_file": config.species_1_tss_file
-        },
-        {
-            "prefix": f"{config.species_2}_to_{config.species_1}_{config.organ_2}",
-            "species_from": config.species_2,
-            "species_to": config.species_1,
-            "organ": config.organ_2,
-            "conserved_file": config.species_2_to_species_1_organ_2_conserved,
-            "tss_file": config.species_1_tss_file
-        }
-    ]
-    
-    # Create scripts for each combination
-    for combo in combinations:
-        prefix = combo["prefix"]
-        
-        script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
-        error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
-        output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
-        promoter_file = config.output_dir / f"{prefix}_conserved_promoters.bed"
-        enhancer_file = config.output_dir / f"{prefix}_conserved_enhancers.bed"
-        
-        with open(script_path, "w") as f:
-            f.write(script_template.format(
-                prefix=prefix,
-                species_from=combo["species_from"],
-                species_to=combo["species_to"],
-                organ=combo["organ"],
-                conserved_file=combo["conserved_file"],
-                tss_file=combo["tss_file"],
-                output_dir=config.output_dir,
-                error_log=error_log,
-                output_log=output_log
-            ))
-        
-        script_paths.append(script_path)
-        output_logs.append(output_log)
-        error_logs.append(error_log)
-        
-        # Store the output files for later use
-        promoter_files[prefix] = promoter_file
-        enhancer_files[prefix] = enhancer_file
-    
-    # Create shared analysis scripts for each organ
-    for organ in [config.organ_1, config.organ_2]:
-        prefix = f"shared_{organ}"
-        script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
-        error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
-        output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
-        
-        species_1_to_species_2_prefix = f"{config.species_1}_to_{config.species_2}_{organ}"
-        species_2_native_prefix = f"{config.species_2}_{organ}"
-        
-        with open(script_path, "w") as f:
-            f.write(shared_script_template.format(
-                organ=organ,
-                species_1_to_species_2_promoters=promoter_files[species_1_to_species_2_prefix],
-                species_1_to_species_2_enhancers=enhancer_files[species_1_to_species_2_prefix],
-                species_2_native_promoters=config.output_dir / f"{species_2_native_prefix}_promoters.bed",
-                species_2_native_enhancers=config.output_dir / f"{species_2_native_prefix}_enhancers.bed",
-                output_dir=config.output_dir,
-                error_log=error_log,
-                output_log=output_log
-            ))
-        
-        script_paths.append(script_path)
-        output_logs.append(output_log)
-        error_logs.append(error_log)
-    
-    # Create native species enhancer/promoter scripts
+    # Create native species enhancer/promoter scripts (STAGE 1)
     for species, species_name in [(1, config.species_1), (2, config.species_2)]:
         for organ in [config.organ_1, config.organ_2]:
             prefix = f"{species_name}_{organ}"
@@ -259,36 +174,138 @@ echo "Enhancers percentage: $(echo "scale=2; $enhancers/$total_peaks*100" | bc)%
 echo "Job finished"
 """)
             
-            script_paths.append(script_path)
+            stage1_scripts.append(script_path)
+            all_scripts.append(script_path)
             output_logs.append(output_log)
             error_logs.append(error_log)
+            stage1_logs.append(output_log)
     
-    # Create master script to submit all jobs
-    master_script = config.temp_dir / "submit_all_enhancer_promoter_jobs.sh"
-    with open(master_script, "w") as f:
+    # Define the four combinations for conserved regions analysis (STAGE 2)
+    combinations = [
+        {
+            "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_1}",
+            "species_from": config.species_1,
+            "species_to": config.species_2,
+            "organ": config.organ_1,
+            "conserved_file": config.species_1_to_species_2_organ_1_conserved,
+            "tss_file": config.species_2_tss_file
+        },
+        {
+            "prefix": f"{config.species_1}_to_{config.species_2}_{config.organ_2}",
+            "species_from": config.species_1,
+            "species_to": config.species_2,
+            "organ": config.organ_2,
+            "conserved_file": config.species_1_to_species_2_organ_2_conserved,
+            "tss_file": config.species_2_tss_file
+        },
+        {
+            "prefix": f"{config.species_2}_to_{config.species_1}_{config.organ_1}",
+            "species_from": config.species_2,
+            "species_to": config.species_1,
+            "organ": config.organ_1,
+            "conserved_file": config.species_2_to_species_1_organ_1_conserved,
+            "tss_file": config.species_1_tss_file
+        },
+        {
+            "prefix": f"{config.species_2}_to_{config.species_1}_{config.organ_2}",
+            "species_from": config.species_2,
+            "species_to": config.species_1,
+            "organ": config.organ_2,
+            "conserved_file": config.species_2_to_species_1_organ_2_conserved,
+            "tss_file": config.species_1_tss_file
+        }
+    ]
+    
+    # Create scripts for each conserved region combination (STAGE 2)
+    for combo in combinations:
+        prefix = combo["prefix"]
+        
+        script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
+        error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
+        output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
+        promoter_file = config.output_dir / f"{prefix}_conserved_promoters.bed"
+        enhancer_file = config.output_dir / f"{prefix}_conserved_enhancers.bed"
+        
+        with open(script_path, "w") as f:
+            f.write(script_template.format(
+                prefix=prefix,
+                species_from=combo["species_from"],
+                species_to=combo["species_to"],
+                organ=combo["organ"],
+                conserved_file=combo["conserved_file"],
+                tss_file=combo["tss_file"],
+                output_dir=config.output_dir,
+                error_log=error_log,
+                output_log=output_log
+            ))
+        
+        stage2_scripts.append(script_path)
+        all_scripts.append(script_path)
+        output_logs.append(output_log)
+        error_logs.append(error_log)
+        stage2_logs.append(output_log)
+        
+        # Store the output files for later use
+        promoter_files[prefix] = promoter_file
+        enhancer_files[prefix] = enhancer_file
+    
+    # Create shared analysis scripts for each organ (STAGE 2)
+    for organ in [config.organ_1, config.organ_2]:
+        prefix = f"shared_{organ}"
+        script_path = config.temp_dir / f"enhancer_promoter_{prefix}.job"
+        error_log = config.output_dir / f"enhancer_promoter_{prefix}.err.txt"
+        output_log = config.output_dir / f"enhancer_promoter_{prefix}.out.txt"
+        
+        species_1_to_species_2_prefix = f"{config.species_1}_to_{config.species_2}_{organ}"
+        species_2_native_prefix = f"{config.species_2}_{organ}"
+        
+        with open(script_path, "w") as f:
+            f.write(shared_script_template.format(
+                organ=organ,
+                species_1_to_species_2_promoters=promoter_files[species_1_to_species_2_prefix],
+                species_1_to_species_2_enhancers=enhancer_files[species_1_to_species_2_prefix],
+                species_2_native_promoters=config.output_dir / f"{species_2_native_prefix}_promoters.bed",
+                species_2_native_enhancers=config.output_dir / f"{species_2_native_prefix}_enhancers.bed",
+                output_dir=config.output_dir,
+                error_log=error_log,
+                output_log=output_log
+            ))
+        
+        stage2_scripts.append(script_path)
+        all_scripts.append(script_path)
+        output_logs.append(output_log)
+        error_logs.append(error_log)
+        stage2_logs.append(output_log)
+    
+    # Create master script for stage 1 (native species analysis)
+    stage1_master_script = config.temp_dir / "submit_enhancer_promoter_stage1_jobs.sh"
+    with open(stage1_master_script, "w") as f:
         f.write("#!/bin/bash\n\n")
-        f.write("echo 'Submitting all enhancer-promoter analysis jobs...'\n")
-        # First run the native species jobs
-        for script in script_paths[:8]:  # Assuming the first 8 scripts are for native species
+        f.write("echo 'Submitting native species enhancer-promoter analysis jobs...'\n")
+        for script in stage1_scripts:
             f.write(f"sbatch {script}\n")
-        f.write("echo 'Native species jobs submitted. Waiting for completion...'\n")
-        f.write("sleep 60\n")  # Wait for the native species jobs to complete
-        # Then run the conserved region jobs
-        for script in script_paths[8:12]:  # Assuming the next 4 scripts are for conserved regions
-            f.write(f"sbatch {script}\n")
-        f.write("echo 'Conserved region jobs submitted. Waiting for completion...'\n")
-        f.write("sleep 60\n")  # Wait for the conserved region jobs to complete
-        # Finally run the shared analysis jobs
-        for script in script_paths[12:]:  # Assuming the last 2 scripts are for shared analysis
-            f.write(f"sbatch {script}\n")
-        f.write("echo 'All jobs submitted'\n")
+        f.write("echo 'All native species jobs submitted'\n")
     
-    master_script.chmod(0o755)  # Make the master script executable
+    # Create master script for stage 2 (conserved regions and shared analysis)
+    stage2_master_script = config.temp_dir / "submit_enhancer_promoter_stage2_jobs.sh"
+    with open(stage2_master_script, "w") as f:
+        f.write("#!/bin/bash\n\n")
+        f.write("echo 'Submitting conserved region and shared analysis jobs...'\n")
+        for script in stage2_scripts:
+            f.write(f"sbatch {script}\n")
+        f.write("echo 'All stage 2 jobs submitted'\n")
+    
+    # Make the master scripts executable
+    stage1_master_script.chmod(0o755)
+    stage2_master_script.chmod(0o755)
     
     return EnhancerPromoterOutput(
-        script=master_script,
+        stage1_script=stage1_master_script,
+        stage2_script=stage2_master_script,
         output_logs=output_logs,
         error_logs=error_logs,
+        stage1_logs=stage1_logs,
+        stage2_logs=stage2_logs,
         promoter_files=promoter_files,
         enhancer_files=enhancer_files
     )
@@ -348,23 +365,18 @@ def extract_enhancer_promoter_counts(output_logs: list[Path], output_csv: Path) 
     print("Enhancer-Promoter Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def run_cross_species_enhancer_promoter_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
+def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     """
     Run the cross-species enhancer-promoter analysis pipeline.
 
     Args:
         config_path: Path to the configuration file.
-        do_not_submit: If True, generate scripts but don't submit jobs.
         
     Returns:
         True if the pipeline ran successfully, False otherwise.
     """
     config = load_bedtool_config(config_path, "cross_species_enhancers_vs_promoters_output_dir")
     script_output = generate_scripts(config)
-    script_path = script_output.script
-
-    if do_not_submit:
-        return True
 
     # Clean old output logs
     old_log_count = 0
@@ -375,8 +387,9 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path, do_not_submi
     if old_log_count > 0:
         print(f"Deleted {old_log_count} old log files")
     
-    # Submit the jobs
-    result = subprocess.run(["bash", str(script_path)], check=True, capture_output=True, text=True)
+    # Submit stage 1 jobs
+    print("Submitting stage 1 jobs (native species analysis)...")
+    result = subprocess.run(["bash", str(script_output.stage1_script)], check=True, capture_output=True, text=True)
     
     if result.stdout:
         print(f"{result.stdout}")
@@ -384,16 +397,41 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path, do_not_submi
         print(f"{result.stderr}")
         return False
     
-    # Monitor the submitted jobs
+    # Monitor stage 1 jobs
+    print("Monitoring stage 1 jobs...")
     try:
-        success = monitor_jobs(script_output.output_logs, script_output.error_logs)
+        stage1_success = monitor_jobs(script_output.stage1_logs, [log for log in script_output.error_logs if log.stem.replace(".err", "") in [out_log.stem.replace(".out", "") for out_log in script_output.stage1_logs]])
+    except KeyboardInterrupt:
+        print("Keyboard interrupt detected. Jobs will still run.")
+        raise KeyboardInterrupt
+    
+    if not stage1_success:
+        print("Stage 1 jobs failed. Aborting pipeline.")
+        return False
+    
+    # Submit stage 2 jobs
+    print("Submitting stage 2 jobs (conserved regions and shared analysis)...")
+    result = subprocess.run(["bash", str(script_output.stage2_script)], check=True, capture_output=True, text=True)
+    
+    if result.stdout:
+        print(f"{result.stdout}")
+    if result.stderr:
+        print(f"{result.stderr}")
+        return False
+    
+    # Monitor stage 2 jobs
+    print("Monitoring stage 2 jobs...")
+    try:
+        stage2_success = monitor_jobs(script_output.stage2_logs, [log for log in script_output.error_logs if log.stem.replace(".err", "") in [out_log.stem.replace(".out", "") for out_log in script_output.stage2_logs]])
     except KeyboardInterrupt:
         print("Keyboard interrupt detected. Jobs will still run.")
         raise KeyboardInterrupt
     
     # If jobs completed successfully, create a summary CSV
-    if success:
+    if stage2_success:
         csv_output = config.output_dir / f"{config.species_1}_{config.species_2}_enhancer_promoter_summary.csv"
         extract_enhancer_promoter_counts(script_output.output_logs, csv_output)
-    
-    return success
+        return True
+    else:
+        print("Stage 2 jobs failed.")
+        return False
