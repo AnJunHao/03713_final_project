@@ -19,6 +19,43 @@ echo "Processing {species_from} to {species_to} {tissue} conserved regions class
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
+# Step 0: Generate native enhancer and promoter files for both species if they don't exist
+echo "[STEP 0] Generating native enhancer and promoter files"
+
+# Generate native files for species_from
+if [ ! -f {output_dir}/{species_from}_{tissue}_promoters.bed ] || [ ! -f {output_dir}/{species_from}_{tissue}_enhancers.bed ]; then
+    echo "Generating native files for {species_from} {tissue}"
+    species_from_tss_annotated={output_dir}/{species_from}_{tissue}_native.TSS.bed
+    
+    # Use the original peak file and annotate with TSS distance
+    bedtools closest -a {species_from_peaks_file} \
+                     -b {species_from_tss_file} \
+                     -d -t first > $species_from_tss_annotated
+    
+    # Classify as promoters vs enhancers
+    awk '$NF <= 5000' $species_from_tss_annotated > {output_dir}/{species_from}_{tissue}_promoters.bed
+    awk '$NF > 5000' $species_from_tss_annotated > {output_dir}/{species_from}_{tissue}_enhancers.bed
+    
+    echo "Created {species_from} {tissue} native files"
+fi
+
+# Generate native files for species_to
+if [ ! -f {output_dir}/{species_to}_{tissue}_promoters.bed ] || [ ! -f {output_dir}/{species_to}_{tissue}_enhancers.bed ]; then
+    echo "Generating native files for {species_to} {tissue}"
+    species_to_tss_annotated={output_dir}/{species_to}_{tissue}_native.TSS.bed
+    
+    # Use the original peak file and annotate with TSS distance
+    bedtools closest -a {species_to_peaks_file} \
+                     -b {species_to_tss_file} \
+                     -d -t first > $species_to_tss_annotated
+    
+    # Classify as promoters vs enhancers
+    awk '$NF <= 5000' $species_to_tss_annotated > {output_dir}/{species_to}_{tissue}_promoters.bed
+    awk '$NF > 5000' $species_to_tss_annotated > {output_dir}/{species_to}_{tissue}_enhancers.bed
+    
+    echo "Created {species_to} {tissue} native files"
+fi
+
 # Step 1: Annotate distance to TSS
 echo "[STEP 1] Annotating TSS distance"
 tss_annotated_file={output_dir}/{species_from}_to_{species_to}_{tissue}_conserved.TSS.bed
@@ -107,6 +144,10 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     assert config.species_1_to_species_2_organ_2_conserved is not None, "species_1_to_species_2_organ_2_conserved is required but not provided in config"
     assert config.species_2_to_species_1_organ_1_conserved is not None, "species_2_to_species_1_organ_1_conserved is required but not provided in config"
     assert config.species_2_to_species_1_organ_2_conserved is not None, "species_2_to_species_1_organ_2_conserved is required but not provided in config"
+    assert config.species_1_organ_1_peak_file is not None, "species_1_organ_1_peak_file is required but not provided in config"
+    assert config.species_1_organ_2_peak_file is not None, "species_1_organ_2_peak_file is required but not provided in config"
+    assert config.species_2_organ_1_peak_file is not None, "species_2_organ_1_peak_file is required but not provided in config"
+    assert config.species_2_organ_2_peak_file is not None, "species_2_organ_2_peak_file is required but not provided in config"
     
     classification_scripts: list[Path] = []
     shared_scripts: list[Path] = []
@@ -121,6 +162,10 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_1,
             "conserved_file": config.species_1_to_species_2_organ_1_conserved,
             "tss_file": config.species_2_tss_file,  # Use the target species TSS file
+            "species_from_peaks_file": config.species_1_organ_1_peak_file,
+            "species_to_peaks_file": config.species_2_organ_1_peak_file,
+            "species_from_tss_file": config.species_1_tss_file,
+            "species_to_tss_file": config.species_2_tss_file,
         },
         {
             "species_from": config.species_1,
@@ -128,6 +173,10 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_2,
             "conserved_file": config.species_1_to_species_2_organ_2_conserved,
             "tss_file": config.species_2_tss_file,
+            "species_from_peaks_file": config.species_1_organ_2_peak_file,
+            "species_to_peaks_file": config.species_2_organ_2_peak_file,
+            "species_from_tss_file": config.species_1_tss_file,
+            "species_to_tss_file": config.species_2_tss_file,
         },
         {
             "species_from": config.species_2,
@@ -135,6 +184,10 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_1,
             "conserved_file": config.species_2_to_species_1_organ_1_conserved,
             "tss_file": config.species_1_tss_file,
+            "species_from_peaks_file": config.species_2_organ_1_peak_file,
+            "species_to_peaks_file": config.species_1_organ_1_peak_file,
+            "species_from_tss_file": config.species_2_tss_file,
+            "species_to_tss_file": config.species_1_tss_file,
         },
         {
             "species_from": config.species_2,
@@ -142,6 +195,10 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_2,
             "conserved_file": config.species_2_to_species_1_organ_2_conserved,
             "tss_file": config.species_1_tss_file,
+            "species_from_peaks_file": config.species_2_organ_2_peak_file,
+            "species_to_peaks_file": config.species_1_organ_2_peak_file,
+            "species_from_tss_file": config.species_2_tss_file,
+            "species_to_tss_file": config.species_1_tss_file,
         }
     ]
     
@@ -152,6 +209,10 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         tissue = combo["tissue"]
         conserved_file = combo["conserved_file"]
         tss_file = combo["tss_file"]
+        species_from_peaks_file = combo["species_from_peaks_file"]
+        species_to_peaks_file = combo["species_to_peaks_file"]
+        species_from_tss_file = combo["species_from_tss_file"]
+        species_to_tss_file = combo["species_to_tss_file"]
         
         script_path = config.temp_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.job"
         error_log = config.output_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.err.txt"
@@ -166,7 +227,11 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
                 tss_file=tss_file,
                 output_dir=config.output_dir,
                 error_log=error_log,
-                output_log=output_log
+                output_log=output_log,
+                species_from_peaks_file=species_from_peaks_file,
+                species_to_peaks_file=species_to_peaks_file,
+                species_from_tss_file=species_from_tss_file,
+                species_to_tss_file=species_to_tss_file
             ))
         
         classification_scripts.append(script_path)
