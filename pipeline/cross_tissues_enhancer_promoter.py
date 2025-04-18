@@ -317,35 +317,47 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path) -> None:
                 continue
                 
             # Only process reference tissue logs
-            if "reference" not in log_file.stem:
+            if "reference" not in log_file.name:
                 continue
             
-            # Filename format is: enhancer_promoter_Human_Liver_reference.out.txt
-            parts = log_file.stem.split('_')
-            if len(parts) < 4:
+            # Parse file name correctly - format is "enhancer_promoter_Human_Liver_reference.out.txt"
+            parts = log_file.name.split('_')
+            
+            # Parts should have index: [0]enhancer [1]promoter [2]Human [3]Liver [4]reference
+            if len(parts) < 5:
                 print(f"Warning: Unexpected log filename format: {log_file}, skipping")
                 continue
             
-            # Extract species and reference_tissue directly from the filename
-            species = parts[1]  # Should be "Human" or "Mouse"
-            reference_tissue = parts[2]  # Should be "Liver" or "Brain" etc.
+            # Extract species (index 2) and reference tissue (index 3)
+            species = parts[2]
+            reference_tissue = parts[3]
             
             shared_promoters = 0
             shared_enhancers = 0
             
-            # Extract counts from the log file
+            # Parse the log file for the counts
             with open(log_file, 'r') as log:
-                for line in log:
-                    if f"{species} shared promoters using {reference_tissue} as reference:" in line:
-                        try:
-                            shared_promoters = int(line.strip().split()[-1])
-                        except ValueError:
-                            print(f"Warning: Failed to parse promoter count from line: {line}")
-                    elif f"{species} shared enhancers using {reference_tissue} as reference:" in line:
-                        try:
-                            shared_enhancers = int(line.strip().split()[-1])
-                        except ValueError:
-                            print(f"Warning: Failed to parse enhancer count from line: {line}")
+                content = log.read()
+                
+                # Find promoters count
+                promoter_start = content.find(f"{species} shared promoters using {reference_tissue} as reference:")
+                if promoter_start != -1:
+                    # Extract count from end of line
+                    promoter_line = content[promoter_start:content.find('\n', promoter_start)]
+                    try:
+                        shared_promoters = int(promoter_line.strip().split()[-1])
+                    except (ValueError, IndexError):
+                        print(f"Warning: Failed to parse promoter count from line: {promoter_line}")
+                
+                # Find enhancers count
+                enhancer_start = content.find(f"{species} shared enhancers using {reference_tissue} as reference:")
+                if enhancer_start != -1:
+                    # Extract count from end of line
+                    enhancer_line = content[enhancer_start:content.find('\n', enhancer_start)]
+                    try:
+                        shared_enhancers = int(enhancer_line.strip().split()[-1])
+                    except (ValueError, IndexError):
+                        print(f"Warning: Failed to parse enhancer count from line: {enhancer_line}")
             
             f.write(f"{species},{reference_tissue},{shared_promoters},{shared_enhancers}\n")
             data.append([species, reference_tissue, shared_promoters, shared_enhancers])
