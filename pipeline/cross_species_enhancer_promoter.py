@@ -55,15 +55,15 @@ shared_regions_script_template = """#!/bin/bash
 
 module load bedtools
 
-echo "Processing {tissue} shared enhancers/promoters across species"
+echo "Processing {tissue} shared enhancers/promoters across species - {from_species} to {to_species}"
 
 # Create output directory if it doesn't exist
 mkdir -p {output_dir}
 
 # Step 1: Find shared promoters/enhancers between species
 echo "[STEP 1] Finding shared promoters/enhancers across species"
-shared_promoters_file={output_dir}/{tissue}_promoters_shared_across_species.bed
-shared_enhancers_file={output_dir}/{tissue}_enhancers_shared_across_species.bed
+shared_promoters_file={output_dir}/{tissue}_promoters_shared_across_species_{from_species}_to_{to_species}.bed
+shared_enhancers_file={output_dir}/{tissue}_enhancers_shared_across_species_{from_species}_to_{to_species}.bed
 
 bedtools intersect -a {from_to_conserved_promoters} \
                    -b {to_native_promoters} \
@@ -78,8 +78,8 @@ echo "[STEP 2] Counting shared elements"
 shared_promoters=$(wc -l $shared_promoters_file | awk '{{print $1}}')
 shared_enhancers=$(wc -l $shared_enhancers_file | awk '{{print $1}}')
 
-echo "{tissue} shared promoters across species: $shared_promoters"
-echo "{tissue} shared enhancers across species: $shared_enhancers"
+echo "{tissue} shared promoters across species ({from_species} to {to_species}): $shared_promoters"
+echo "{tissue} shared enhancers across species ({from_species} to {to_species}): $shared_enhancers"
 
 echo "Job finished"
 """
@@ -179,11 +179,25 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_1,
             "from_species": config.species_1,
             "to_species": config.species_2,
+            "direction": f"{config.species_1}_to_{config.species_2}"
         },
         {
             "tissue": config.organ_2,
             "from_species": config.species_1,
             "to_species": config.species_2,
+            "direction": f"{config.species_1}_to_{config.species_2}"
+        },
+        {
+            "tissue": config.organ_1,
+            "from_species": config.species_2,
+            "to_species": config.species_1,
+            "direction": f"{config.species_2}_to_{config.species_1}"
+        },
+        {
+            "tissue": config.organ_2,
+            "from_species": config.species_2,
+            "to_species": config.species_1,
+            "direction": f"{config.species_2}_to_{config.species_1}"
         }
     ]
     
@@ -191,14 +205,17 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         tissue = combo["tissue"]
         from_species = combo["from_species"]
         to_species = combo["to_species"]
+        direction = combo["direction"]
         
-        script_path = config.temp_dir / f"cross_species_shared_enhancer_promoter_{tissue}.job"
-        error_log = config.output_dir / f"cross_species_shared_enhancer_promoter_{tissue}.err.txt"
-        output_log = config.output_dir / f"cross_species_shared_enhancer_promoter_{tissue}.out.txt"
+        script_path = config.temp_dir / f"cross_species_shared_enhancer_promoter_{direction}_{tissue}.job"
+        error_log = config.output_dir / f"cross_species_shared_enhancer_promoter_{direction}_{tissue}.err.txt"
+        output_log = config.output_dir / f"cross_species_shared_enhancer_promoter_{direction}_{tissue}.out.txt"
         
         with open(script_path, "w") as f:
             f.write(shared_regions_script_template.format(
                 tissue=tissue,
+                from_species=from_species,
+                to_species=to_species,
                 from_to_conserved_promoters=f"{config.output_dir}/{from_species}_to_{to_species}_{tissue}_conserved_promoters.bed",
                 to_native_promoters=f"{config.output_dir}/{to_species}_{tissue}_promoters.bed",
                 from_to_conserved_enhancers=f"{config.output_dir}/{from_species}_to_{to_species}_{tissue}_conserved_enhancers.bed",
@@ -299,12 +316,14 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
         classification_csv: Path to the classification CSV file (for reference)
     """
     data = []
-    headers = ["Tissue", "Shared Promoters", "Shared Enhancers"]
+    headers = ["Tissue", "From Species", "To Species", "Shared Promoters", "Shared Enhancers"]
     
     for log_file in output_logs:
         # Only process logs from shared region jobs
         if "cross_species_shared_enhancer_promoter" in log_file.name:
             tissue = None
+            from_species = None
+            to_species = None
             shared_promoters = None
             shared_enhancers = None
             
@@ -313,13 +332,17 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
                     if "Processing" in line and "shared enhancers/promoters across species" in line:
                         parts = line.strip().split()
                         tissue = parts[1]
+                        # Extract from/to species from the line (format: "from_species to to_species")
+                        direction_part = line.split("-")[1].strip()
+                        from_species = direction_part.split("to")[0].strip()
+                        to_species = direction_part.split("to")[1].strip()
                     elif "shared promoters across species" in line:
                         shared_promoters = line.strip().split(":")[-1].strip()
                     elif "shared enhancers across species" in line:
                         shared_enhancers = line.strip().split(":")[-1].strip()
             
-            if tissue and shared_promoters and shared_enhancers:
-                data.append([tissue, shared_promoters, shared_enhancers])
+            if tissue and from_species and to_species and shared_promoters and shared_enhancers:
+                data.append([tissue, from_species, to_species, shared_promoters, shared_enhancers])
     
     # Write to CSV
     with open(output_csv, "w") as f:
