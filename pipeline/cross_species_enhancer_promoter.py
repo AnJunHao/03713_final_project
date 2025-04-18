@@ -359,7 +359,7 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path, do_not_submi
     Returns:
         True if the pipeline ran successfully, False otherwise.
     """
-    config = load_bedtool_config(config_path, "cross_species_enhancer_promoter_output_dir")
+    config = load_bedtool_config(config_path, "cross_species_enhancers_vs_promoters_output_dir")
     script_output = generate_scripts(config)
     script_path = script_output.script
 
