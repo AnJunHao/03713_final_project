@@ -427,8 +427,6 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     Returns:
         True if the pipeline completed successfully, False otherwise
     """
-    print("\n================ Running Cross-Species Enhancer Promoter Pipeline ================\n")
-    
     # Load config file
     config = load_bedtool_config(config_path, "cross_species_enhancers_vs_promoters_output_dir")
     

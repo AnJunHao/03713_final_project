@@ -27,6 +27,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip-step-5", action="store_true", 
         help="Skip running cross-tissues (within-species) enhancers vs promoters pipeline (step 5)")
+    parser.add_argument(
+        "--skip-step-6", action="store_true", 
+        help="Skip running cross-species enhancers vs promoters pipeline (step 6)")
     args = parser.parse_args()
     
     print("="*100)
@@ -77,6 +80,9 @@ if __name__ == "__main__":
         print("Step 5: Skipped cross-tissues (within-species) enhancers vs promoters pipeline")
 
     print("="*100)
-    print("Step 6: Running cross-species enhancers vs promoters pipeline...")
-    success = pipeline.run_cross_species_enhancer_promoter_pipeline(args.config)
-    print("Step 6: Cross-species enhancers vs promoters pipeline complete!")
+    if not args.skip_step_6:
+        print("Step 6: Running cross-species enhancers vs promoters pipeline...")
+        success = pipeline.run_cross_species_enhancer_promoter_pipeline(args.config)
+        print("Step 6: Cross-species enhancers vs promoters pipeline complete!")
+    else:
+        print("Step 6: Skipped cross-species enhancers vs promoters pipeline")
