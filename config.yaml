@@ -37,8 +37,16 @@ cross_species_enhancers_vs_promoters_output_dir: "/ocean/projects/bio230007p/can
 # Normally, you don't need to specify these fields
 
 # These are the paths to the files that contain the HALPER output
-# They should be under the halper_output_dir
+# They should be under the halper_output_dir, or you can manually specify the paths
 # species_1_organ_1_to_species_2: ".../...Halper.narrowPeak.gz"
 # species_1_organ_2_to_species_2: ".../...Halper.narrowPeak.gz"
 # species_2_organ_1_to_species_1: ".../...Halper.narrowPeak.gz"
 # species_2_organ_2_to_species_1: ".../...Halper.narrowPeak.gz"
+
+# These are the paths to the files that contain the conserved regions
+# They should be under the cross_species_open_vs_closed_output_dir,
+# or you can manually specify the paths
+# species_1_to_species_2_organ_1_conserved: ".../...conserved.bed"
+# species_1_to_species_2_organ_2_conserved: ".../...conserved.bed"
+# species_2_to_species_1_organ_1_conserved: ".../...conserved.bed"
+# species_2_to_species_1_organ_2_conserved: ".../...conserved.bed"
