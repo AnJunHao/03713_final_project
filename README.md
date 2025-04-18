@@ -1,10 +1,10 @@
 # Cross-Species and Cross-Tissue Chromatin Accessibility Analysis Pipeline
 
-This project provides a pipeline for comparing chromatin accessibility data (e.g., ATAC-seq peaks) across different species and tissues. It leverages HALPER for ortholog mapping and performs various downstream analyses to identify conserved, species-specific, and tissue-specific regulatory elements. Here is a demo video of the pipeline: 🎥 [Project Demo Video](https://youtu.be/aQjV1WrcCD0)
+This project provides a pipeline for comparing chromatin accessibility data (e.g., ATAC-seq peaks) across different species and tissues. It leverages HALPER for ortholog mapping and performs various downstream analyses to identify conserved, species-specific, and tissue-specific regulatory elements. Here is a 37-second demo video of the pipeline: 🎥 [Project Demo Video](https://youtu.be/aQjV1WrcCD0)
 
 ## 1. Setup
 
-This pipeline is designed to be run on a HPC cluster and is tested on the [PSC Bridges-2 cluster](https://www.psc.edu/resources/bridges-2/).
+This pipeline is designed to be run on a HPC cluster and is tested on the [PSC Bridges-2 cluster](https://www.psc.edu/resources/bridges-2/). You can run the main script directly on the login node without any modification. The pipeline will automatically setup jobs on the compute nodes for each step.
 
 ### 1.1. Clone the Repository
 
@@ -154,7 +154,7 @@ In our pipeline, we used the Mouse GRCm38 (UCSC mm10, December 2011) assembly as
 
 ## 5. Outputs
 
-Each pipeline step generates output files in the respective directories specified in `config.yaml`. Examine these directories after a successful run to find the results of each analysis (e.g., BED files, text tables).
+Each pipeline step generates output files in the respective directories specified in `config.yaml`. Examine these directories after a successful run to find the results of each analysis (e.g., BED files, text tables). Error logs are also saved in the respective directories, with names ending in `*.err.txt`.
 
 ## 6. Additional Resources
 
