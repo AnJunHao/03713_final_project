@@ -258,7 +258,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         error_logs=error_logs,
     )
 
-def extract_classification_counts(output_logs: list[Path], output_csv: Path) -> None:
+def extract_classification_counts(output_logs: list[Path], output_csv: Path) -> list:
     """
     Extract enhancer and promoter counts from cross-species classification output logs and save to a CSV file
     
@@ -267,7 +267,7 @@ def extract_classification_counts(output_logs: list[Path], output_csv: Path) -> 
         output_csv: Path to save the CSV file
     """
     data = []
-    headers = ["Species From", "Species To", "Tissue", "Total Conserved", "Promoters", "Enhancers"]
+    headers = ["Species From", "Species To", "Tissue", "Total Conserved", "Promoters", "Promoters %", "Enhancers", "Enhancers %"]
     
     for log_file in output_logs:
         # Only process logs from classification jobs (not shared region jobs)
@@ -294,17 +294,37 @@ def extract_classification_counts(output_logs: list[Path], output_csv: Path) -> 
                         enhancers = line.strip().split(":")[-1].strip()
             
             if species_from and species_to and tissue and total_conserved and promoters and enhancers:
-                data.append([species_from, species_to, tissue, total_conserved, promoters, enhancers])
+                total_conserved_int = int(total_conserved)
+                promoters_int = int(promoters)
+                enhancers_int = int(enhancers)
+                
+                # Calculate percentages
+                promoters_pct = round(promoters_int / total_conserved_int * 100, 2) if total_conserved_int > 0 else 0
+                enhancers_pct = round(enhancers_int / total_conserved_int * 100, 2) if total_conserved_int > 0 else 0
+                
+                data.append([
+                    species_from, 
+                    species_to, 
+                    tissue, 
+                    total_conserved, 
+                    promoters, 
+                    f"{promoters_pct}%", 
+                    enhancers, 
+                    f"{enhancers_pct}%"
+                ])
     
     # Write to CSV
     with open(output_csv, "w") as f:
         f.write(",".join(headers) + "\n")
         for row in data:
-            f.write(",".join(row) + "\n")
+            f.write(",".join(str(item) for item in row) + "\n")
     
     # Print a summary table
     print("\nCross-Species Enhancer-Promoter Classification Results:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
+    
+    # Return the data for use in other functions
+    return data
 
 def extract_shared_counts(output_logs: list[Path], output_csv: Path, classification_csv: Path) -> None:
     """
@@ -315,8 +335,26 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
         output_csv: Path to save the CSV file
         classification_csv: Path to the classification CSV file (for reference)
     """
+    # First load the classification data to get the total counts
+    classification_data = {}
+    if classification_csv.exists():
+        with open(classification_csv, "r") as f:
+            lines = f.readlines()
+            for i, line in enumerate(lines):
+                if i > 0:  # Skip header line
+                    parts = line.strip().split(",")
+                    if len(parts) >= 7:
+                        species_from = parts[0]
+                        species_to = parts[1]
+                        tissue = parts[2]
+                        promoters = int(parts[4])
+                        enhancers = int(parts[6])
+                        
+                        key = f"{species_from}_{species_to}_{tissue}"
+                        classification_data[key] = {"promoters": promoters, "enhancers": enhancers}
+    
     data = []
-    headers = ["Tissue", "From Species", "To Species", "Shared Promoters", "Shared Enhancers"]
+    headers = ["Tissue", "From Species", "To Species", "Shared Promoters", "Shared Promoters %", "Shared Enhancers", "Shared Enhancers %"]
     
     for log_file in output_logs:
         # Only process logs from shared region jobs
@@ -342,13 +380,38 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
                         shared_enhancers = line.strip().split(":")[-1].strip()
             
             if tissue and from_species and to_species and shared_promoters and shared_enhancers:
-                data.append([tissue, from_species, to_species, shared_promoters, shared_enhancers])
+                shared_promoters_int = int(shared_promoters)
+                shared_enhancers_int = int(shared_enhancers)
+                
+                # Calculate percentages if classification data is available
+                key = f"{from_species}_{to_species}_{tissue}"
+                promoters_pct = "N/A"
+                enhancers_pct = "N/A"
+                
+                if key in classification_data:
+                    total_promoters = classification_data[key]["promoters"]
+                    total_enhancers = classification_data[key]["enhancers"]
+                    
+                    if total_promoters > 0:
+                        promoters_pct = f"{round(shared_promoters_int / total_promoters * 100, 2)}%"
+                    if total_enhancers > 0:
+                        enhancers_pct = f"{round(shared_enhancers_int / total_enhancers * 100, 2)}%"
+                
+                data.append([
+                    tissue, 
+                    from_species, 
+                    to_species, 
+                    shared_promoters, 
+                    promoters_pct, 
+                    shared_enhancers, 
+                    enhancers_pct
+                ])
     
     # Write to CSV
     with open(output_csv, "w") as f:
         f.write(",".join(headers) + "\n")
         for row in data:
-            f.write(",".join(row) + "\n")
+            f.write(",".join(str(item) for item in row) + "\n")
     
     # Print a summary table
     print("\nCross-Species Shared Enhancer-Promoter Results:")
