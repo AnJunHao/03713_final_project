@@ -1,100 +1,141 @@
-# 03713 project
+# Cross-Species and Cross-Tissue Chromatin Accessibility Analysis Pipeline
+
+This project provides a pipeline for comparing chromatin accessibility data (e.g., ATAC-seq peaks) across different species and tissues. It leverages HALPER for ortholog mapping and performs various downstream analyses to identify conserved, species-specific, and tissue-specific regulatory elements. Here is a demo video of the pipeline: 🎥 [Project Demo Video](https://youtu.be/aQjV1WrcCD0)
 
 ## 1. Setup
 
-### Clone the repository
+### 1.1. Clone the Repository
 
 ```bash
 git clone https://github.com/yitianTracy/03713_final_project.git
+cd 03713_final_project
 ```
 
-### Python Environment
+### 1.2. Python Environment
 
-Make sure your python version is at least 3.9.
+Ensure you have Python 3.9 or later installed.
 
 ```bash
 python --version
 ```
 
-Install the `pyyaml` package.
+Install the required Python packages:
 
 ```bash
-pip install pyyaml
+pip install pyyaml tabulate
 ```
 
-### Install Required Tools
+### 1.3. Install Required Tools
 
-Follow the instructions in the official HAL liftover postprocessing guide to install HAL, HDF5, sonLib
+This pipeline relies on external bioinformatics tools. Please install them and ensure they are accessible in your system's PATH or provide the correct paths in the configuration file (`config.yaml`).
 
-🔗 [HAL installation instructions](https://github.com/pfenninglab/halLiftover-postprocessing/blob/master/hal_install_instructions.md)
+*   **HAL Tools:** Required for HALPER. Follow the official installation guide:
+    *   🔗 [HAL installation instructions](https://github.com/pfenninglab/halLiftover-postprocessing/blob/master/hal_install_instructions.md)
+*   **BedTools:** Used for genomic interval operations. Installation instructions can be found on the [BedTools website](https://bedtools.readthedocs.io/en/latest/content/installation.html).
 
-------
+## 2. Configuration (`config.yaml`)
 
-## 2. Mapping of chromatin regions cross species with halLiftover and HALPER (Human to mouse)
+The pipeline's behavior is controlled by the `config.yaml` file. Before running, you need to configure it according to your environment and input data.
 
- 🔗 [halLiftover-postprocessing](https://github.com/pfenninglab/halLiftover-postprocessing/tree/master)
+Key sections:
 
-### Select Human Peak Files
+*   **Base Settings:** Define the species and organs being compared (`species_1`, `species_2`, `organ_1`, `organ_2`) and a temporary directory (`temp_dir`).
+*   **HALPER Settings:**
+    *   `halper_script`: Path to the `halper_map_peak_orthologs.sh` script from the [halLiftover-postprocessing](https://github.com/pfenninglab/halLiftover-postprocessing) tool.
+    *   `hal_file`: Path to the HAL alignment file containing the genomes of interest.
+    *   `halper_output_dir`: Directory where HALPER mapping results will be saved.
+    *   `species_*_organ_*_peak_file`: Paths to the input peak files (e.g., narrowPeak format) for each species-organ combination.
+*   **Enhancers vs Promoters Pipeline Settings:**
+    *   `species_*_TSS_file`: Paths to the Transcription Start Site (TSS) annotation files (BED format) for each species. Used to distinguish promoter regions from enhancers.
+*   **Output Directories:** Specify output directories for various analysis steps (`bedtool_preprocess_output_dir`, `cross_species_open_vs_closed_output_dir`, etc.). These directories will be created if they don't exist.
 
-Chose the **optimal peak set** for human pancreas `/ocean/projects/bio230007p/ikaplow/HumanAtac/Pancreas/peak/idr_reproducibility/idr.optimal_peak.narrowPeak.gz` due to ~3-fold difference in sequencing depth (138M vs. 426M reads) between replicates.
- The **optimal set** is preferred over the conservative one for more comprehensive and reliable peak representation.
+**Note:** The configuration file includes commented-out sections for paths that are *automatically inferred* by the pipeline (e.g., specific HALPER output files and conserved files). You typically do not need to uncomment or modify these.
 
-Chose the **optimal peak set** for human liver
- `/ocean/projects/bio230007p/ikaplow/HumanAtac/Liver/peak/idr_reproducibility/idr.optimal_peak.narrowPeak.gz` due to a moderate imbalance in sequencing depth and data quality between the two replicates. Replicate 1 shows significantly higher mitochondrial content (34.8% vs. 14.2%), a higher duplication rate (37.3% vs. 19.5%), anda ~2-fold difference in sequencing depth (95M vs. 201M reads). 
+Make sure all paths to input files, scripts, and tools are correct for your system.
 
-------
+## 3. Pipeline Execution
 
-### Prepare Peak Files
-
-```bash
-# Pancreas (Human)
-gunzip -c /ocean/projects/bio230007p/ikaplow/HumanAtac/Pancreas/peak/idr_reproducibility/idr.optimal_peak.narrowPeak.gz \
-> idr.optimal_peak_pancreas.narrowPeak
-
-# Liver (Human)
-gunzip -c /ocean/projects/bio230007p/ikaplow/HumanAtac/Liver/peak/idr_reproducibility/idr.optimal_peak.narrowPeak.gz \
-> idr.optimal_peak_liver.narrowPeak
-```
-
-------
-
-### Configure the `config.yaml` file
-
-```yaml
-# Base Settings
-species_1: "Human"
-species_2: "Mouse"
-organ_1: "Pancreas"
-organ_2: "Liver"
-temp_dir: "/ocean/projects/bio230007p/can1/temp"
-
-# HALPER Settings
-halper_script: "/ocean/projects/bio230007p/can1/halLiftover-postprocessing/halper_map_peak_orthologs.sh"
-hal_file: "/ocean/projects/bio230007p/ikaplow/Alignments/10plusway-master.hal"
-halper_output_dir: "/ocean/projects/bio230007p/can1/output/halper"
-species_1_organ_1_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/human_pancreas.idr.optimal_peak.narrowPeak"
-species_1_organ_2_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/human_liver.idr.optimal_peak.narrowPeak"
-species_2_organ_1_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/mouse_pancreas.idr.optimal_peak.narrowPeak"
-species_2_organ_2_peak_file: "/ocean/projects/bio230007p/can1/s2_v2/mouse_liver.idr.optimal_peak.narrowPeak"
-
-# Bedtool Settings
-bedtool_output_dir: "/ocean/projects/bio230007p/can1/output/bedtool"
-```
-
-Adjust the configurations to your own needs. Make sure the paths to the files / executables are correct. The `temp_dir` and `output_dir` will be created if they do not exist.
-
-------
-
-### Run the pipeline
+Run the entire pipeline using the main script:
 
 ```bash
 python main.py --config config.yaml
 ```
 
-The pipeline will run the HALPER pipeline and the bedtools pipeline in one go.
+### Command-line Options
 
-------
+You can skip specific steps using command-line flags:
 
-## 3.  Cross-Species and Cross-Tissue Comparison of Open Chromatin Regions
+*   `--skip-step-1`: Skip running the HALPER pipeline (Step 1).
+*   `--skip-infer-halper-output`: Skip updating the config with inferred HALPER output paths. This may be helpful if you want to manually configure the HALPER result files for subsequent steps.
+*   `--skip-step-3`: Skip running the cross-species open vs. closed analysis (Step 3).
+*   `--skip-infer-conserved-files`: Skip updating the config with inferred conserved file paths. This may be helpful if you want to manually configure the conserved files for subsequent steps.
+*   `--skip-step-4`: Skip running the cross-tissues shared vs. specific analysis (Step 4).
+*   `--skip-step-5`: Skip running the cross-tissues enhancer vs. promoter analysis (Step 5).
+*   `--skip-step-6`: Skip running the cross-species enhancer vs. promoter analysis (Step 6).
 
-TODO
+**Note:** The output of step 1 is required for all subsequent steps. The output of step 3 is required for step 6. If you skip step 1 or step 3, you should satisfy one of the following conditions:
+
+*   You have already run step 1 or step 3 before and have the output files saved in the corresponding directories without changing the names of the files. Our pipeline will automatically infer the paths to these output files and update the internal configuration for subsequent steps.
+*   You have manually configured the required paths in the config file and use the `--skip-infer-halper-output` or `--skip-infer-conserved-files` flags.
+
+Example: Run only Step 2 and Step 3 (assuming Step 1 outputs exist):
+
+```bash
+python main.py --config config.yaml --skip-step-1 --skip-step-4 --skip-step-5
+```
+
+## 4. Pipeline Steps Explained
+
+The `main.py` script executes the following steps sequentially:
+
+### Step 1: HALPER Ortholog Mapping (`pipeline/halper.py`)
+Maps regulatory elements (peaks) from one species to another using the HALPER tool. This step:
+- Takes narrowPeak files from each species-tissue combination
+- Runs the HALPER ortholog mapping algorithm to find orthologous regions across species
+- Generates mapped peak files in the target species' genome coordinates
+- Creates the foundation for all downstream cross-species analyses
+
+### Step 2: BedTools Preprocessing (`pipeline/bedtool_preprocess.py`)
+Prepares the data for the downstream analyses by:
+- Extracting coordinate information (first 3 columns) from the peak files
+- Unzipping HALPER output files if needed
+- Creating clean BED files for use in subsequent steps
+- Updating the configuration with paths to these cleaned files
+
+### Step 3: Cross-Species Ortholog Comparison (Open vs. Closed) (`pipeline/cross_species_open_vs_closed.py`)
+Identifies conserved and species-specific regulatory elements by:
+- Comparing orthologous regions mapped from one species to corresponding native peaks in the target species
+- Classifying orthologous elements as "open" (conserved) if they overlap with native peaks in the target species
+- Classifying orthologous elements as "closed" (species-specific) if they don't overlap with native peaks
+- Generating statistics on conservation rates between species for each tissue
+
+### Step 4: Cross-Tissue Comparison (Shared vs. Specific) (`pipeline/cross_tissues_shared_vs_specific.py`)
+Examines tissue specificity of regulatory elements within each species by:
+- Comparing peak sets between different tissues of the same species
+- Identifying "shared" peaks that appear in both tissues
+- Identifying "tissue-specific" peaks unique to each tissue
+- Generating statistics on the proportion of shared versus tissue-specific elements
+
+### Step 5: Cross-Tissue Comparison (Enhancer vs. Promoter) (`pipeline/cross_tissues_enhancer_promoter.py`)
+Classifies regulatory elements by genomic context and examines their tissue specificity by:
+- Using TSS (Transcription Start Site) annotations to classify peaks as either promoters (≤5000bp from TSS) or enhancers (>5000bp from TSS)
+- Comparing the distribution of enhancers and promoters between tissues of the same species
+- Identifying tissue-shared versus tissue-specific enhancers and promoters
+- Generating statistics on the proportion of enhancers versus promoters in each tissue
+
+### Step 6: Cross-Species Comparison (Enhancer vs. Promoter) (`pipeline/cross_species_enhancer_promoter.py`)
+Examines the evolutionary conservation of different types of regulatory elements by:
+- Classifying conserved (open) peaks identified in Step 3 as enhancers or promoters based on distance to TSS
+- Comparing enhancer and promoter conservation rates between species
+- Identifying elements that maintain the same classification (enhancer/promoter) across species
+- Generating statistics on conservation patterns specific to enhancers versus promoters
+
+## 5. Outputs
+
+Each pipeline step generates output files in the respective directories specified in `config.yaml`. Examine these directories after a successful run to find the results of each analysis (e.g., BED files, text tables).
+
+## 6. Additional Resources
+
+*   [halLiftover-postprocessing Repository](https://github.com/pfenninglab/halLiftover-postprocessing)
+*   [BedTools Documentation](https://bedtools.readthedocs.io/)
+*   [HAL Tools](https://github.com/ComparativeGenomicsToolkit/hal)
