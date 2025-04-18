@@ -67,11 +67,11 @@ shared_enhancers_file={output_dir}/{tissue}_enhancers_shared_across_species_{fro
 
 bedtools intersect -a {from_to_conserved_promoters} \
                    -b {to_native_promoters} \
-                   -u > $shared_promoters_file
+                   -u -wa > $shared_promoters_file
 
 bedtools intersect -a {from_to_conserved_enhancers} \
                    -b {to_native_enhancers} \
-                   -u > $shared_enhancers_file
+                   -u -wa > $shared_enhancers_file
 
 # Step 2: Count shared elements
 echo "[STEP 2] Counting shared elements"
