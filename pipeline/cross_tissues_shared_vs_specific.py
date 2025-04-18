@@ -22,7 +22,7 @@ mkdir -p {output_dir}
 # Step 1: Find shared regions - tissue1 peaks also in tissue2
 shared_file={output_dir}/{species}_{tissue1}_peaks_shared_with_{tissue2}.bed
 echo "[STEP 1] Finding shared peaks for {tissue1}: $shared_file"
-bedtools intersect -a {tissue1_file} -b {tissue2_file} -u > $shared_file
+bedtools intersect -a {tissue1_file} -b {tissue2_file} -u -wa > $shared_file
 
 # Step 2: Find tissue-specific peaks
 specific_file={output_dir}/{species}_{tissue1}_specific.bed

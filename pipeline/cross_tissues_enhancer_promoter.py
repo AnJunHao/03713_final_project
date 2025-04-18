@@ -67,12 +67,12 @@ mkdir -p {output_dir}
 # Step 1: Find shared promoters between tissues
 echo "[STEP 1] Finding shared promoters"
 shared_promoters_file={output_dir}/{species}_promoters_{reference_tissue}_as_reference.bed
-bedtools intersect -a {reference_promoters} -b {target_promoters} -u > $shared_promoters_file
+bedtools intersect -a {reference_promoters} -b {target_promoters} -u -wa > $shared_promoters_file
 
 # Step 2: Find shared enhancers between tissues
 echo "[STEP 2] Finding shared enhancers"
 shared_enhancers_file={output_dir}/{species}_enhancers_{reference_tissue}_as_reference.bed
-bedtools intersect -a {reference_enhancers} -b {target_enhancers} -u > $shared_enhancers_file
+bedtools intersect -a {reference_enhancers} -b {target_enhancers} -u -wa > $shared_enhancers_file
 
 # Step 3: Count shared elements
 echo "[STEP 3] Counting shared elements"

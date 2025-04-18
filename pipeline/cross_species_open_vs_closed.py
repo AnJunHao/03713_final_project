@@ -23,7 +23,7 @@ mkdir -p {output_dir}
 # Step 1: Intersect for conserved (ortholog open)
 conserved_file={output_dir}/{prefix}_conserved.bed
 echo "[STEP 1] Finding conserved peaks: $conserved_file"
-bedtools intersect -a {halper_file} -b {native_file} -u > $conserved_file
+bedtools intersect -a {halper_file} -b {native_file} -u -wa > $conserved_file
 
 # Step 2: Intersect for non-conserved (ortholog closed)
 closed_file={output_dir}/{prefix}_closed.bed
