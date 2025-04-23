@@ -247,11 +247,17 @@ In our pipeline, we used the Mouse GRCm38 (UCSC mm10, December 2011) assembly as
 
 Each pipeline step generates output files in the respective directories specified in `config.yaml`. Examine these directories after a successful run to find the results of each analysis (e.g., BED files, text tables). Error logs are also saved in the respective directories, with names ending in `*.err.txt`.
 
-## 6. Additional Resources
+## 6. Citations
 
-*   [halLiftover-postprocessing Repository](https://github.com/pfenninglab/halLiftover-postprocessing)
-*   [BedTools Documentation](https://bedtools.readthedocs.io/)
-*   [HAL Tools](https://github.com/ComparativeGenomicsToolkit/hal)
+* ENCODE Project Consortium. "An integrated encyclopedia of DNA elements in the human genome." Nature 489.7414 (2012): 57.
+
+* Zhang, Xiaoyu, et al. "HALPER facilitates the identification of regulatory element orthologs across species." Bioinformatics 36.15 (2020): 4339-4340.
+
+* McLean, Cory Y., et al. "GREAT improves functional interpretation of cis-regulatory regions." Nature biotechnology 28.5 (2010): 495-501.
+
+* Quinlan, Aaron R., and Ira M. Hall. "BEDTools: a flexible suite of utilities for comparing genomic features." Bioinformatics 26.6 (2010): 841-842.
+
+* Bailey, Timothy L., et al. "MEME SUITE: tools for motif discovery and searching." Nucleic acids research 37.suppl_2 (2009): W202-W208.
 
 ## 7. Contributors
 
