@@ -13,14 +13,8 @@ if __name__ == "__main__":
         "--skip-step-1", action="store_true", 
         help="Skip running the HALPER pipeline (step 1).")
     parser.add_argument(
-        "--skip-infer-halper-output", action="store_true", 
-        help="Skip updating the config with HALPER output (step 1).")
-    parser.add_argument(
         "--skip-step-3", action="store_true", 
         help="Skip running cross-species ortholog open vs closed pipeline (step 3).")
-    parser.add_argument(
-        "--skip-infer-conserved-files", action="store_true", 
-        help="Skip updating the config with conserved files (step 3)")
     parser.add_argument(
         "--skip-step-4", action="store_true", 
         help="Skip running cross-tissues region shared vs species pipeline (step 4)")
@@ -30,6 +24,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip-step-6", action="store_true", 
         help="Skip running cross-species enhancers vs promoters pipeline (step 6)")
+    parser.add_argument(
+        "--skip-step-7", action="store_true", 
+        help="Skip running MEME-chip analysis pipeline (step 7)")
     args = parser.parse_args()
     
     print("="*100)
@@ -39,11 +36,6 @@ if __name__ == "__main__":
         print("Step 1: HALPER pipeline complete!")
     else:
         print("Step 1: Skipped HALPER pipeline")
-        if not args.skip_infer_halper_output:
-            success = pipeline.run_halper_pipeline(args.config, do_not_submit=True)
-        else:
-            print("Step 1: Skipped updating the config with HALPER output")
-            success = True
 
     print("="*100)
     print("Step 2: Preprocessing files for bedtools pipeline...")
@@ -57,11 +49,6 @@ if __name__ == "__main__":
         print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
     else:
         print("Step 3: Skipped cross-species ortholog open vs closed pipeline")
-        if not args.skip_infer_conserved_files:
-            success = pipeline.run_cross_species_open_vs_closed_pipeline(args.config, do_not_submit=True)
-        else:
-            print("Step 3: Skipped updating the config with conserved files")
-            success = True
 
     print("="*100)
     if not args.skip_step_4:
@@ -86,3 +73,11 @@ if __name__ == "__main__":
         print("Step 6: Cross-species enhancers vs promoters pipeline complete!")
     else:
         print("Step 6: Skipped cross-species enhancers vs promoters pipeline")
+
+    print("="*100)
+    if not args.skip_step_7:
+        print("Step 7: Running MEME-chip analysis pipeline...")
+        success = pipeline.run_meme_chip_analysis_pipeline(args.config)
+        print("Step 7: MEME-chip analysis pipeline complete!")
+    else:
+        print("Step 7: Skipped MEME-chip analysis pipeline")

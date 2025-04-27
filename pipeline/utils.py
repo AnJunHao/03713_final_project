@@ -23,7 +23,7 @@ def update_config(config_path: Path, config_entries: dict[str, Path], backup_suf
         else:
             existing_keys.append(key)
 
-    if config["warn_on_existing_keys"]:
+    if config["warn_on_existing_keys"] and existing_keys:
         print(f"The following keys have been specified in the config file: {existing_keys}")
     
     # Write the updated config file

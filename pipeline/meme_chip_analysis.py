@@ -4,7 +4,6 @@ from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
-import yaml
 
 faidx_script_template = """#!/bin/bash
 #SBATCH -p RM-shared

@@ -4,9 +4,11 @@ from .bedtool_preprocess import bedtool_preprocess
 from .cross_tissues_shared_vs_specific import run_cross_tissues_shared_vs_specific_pipeline
 from .cross_tissues_enhancer_promoter import run_cross_tissues_enhancer_promoter_pipeline
 from .cross_species_enhancer_promoter import run_cross_species_enhancer_promoter_pipeline
+from .meme_chip_analysis import run_meme_chip_analysis_pipeline
 __all__ = ["run_halper_pipeline",
            "bedtool_preprocess",
            "run_cross_species_open_vs_closed_pipeline",
            "run_cross_tissues_shared_vs_specific_pipeline",
            "run_cross_tissues_enhancer_promoter_pipeline",
-           "run_cross_species_enhancer_promoter_pipeline"]
+           "run_cross_species_enhancer_promoter_pipeline",
+           "run_meme_chip_analysis_pipeline"]
