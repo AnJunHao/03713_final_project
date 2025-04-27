@@ -410,7 +410,7 @@ def update_config(config_path: Path, enhancer_promoter_files: dict[str, Path]) -
     Update the configuration file with the enhancer and promoter files
     """
     # Create a backup of the original config file
-    backup_path = Path(f"{config_path}.backup03")
+    backup_path = Path(f"{config_path}.backup04")
     with open(config_path, "r") as src:
         with open(backup_path, "w") as dst:
             dst.write(src.read())
