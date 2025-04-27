@@ -71,9 +71,10 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_step_6:
         print("Step 6: Running cross-species enhancers vs promoters pipeline...")
-        pipeline.run_cross_species_enhancer_promoter_pipeline(args.config, do_not_submit=True)
+        pipeline.run_cross_species_enhancer_promoter_pipeline(args.config)
         print("Step 6: Cross-species enhancers vs promoters pipeline complete!")
     else:
+        pipeline.run_cross_species_enhancer_promoter_pipeline(args.config, do_not_submit=True)
         print("Step 6: Skipped cross-species enhancers vs promoters pipeline")
 
     print("="*100)
