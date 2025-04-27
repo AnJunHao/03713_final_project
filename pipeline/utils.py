@@ -19,7 +19,7 @@ def update_config(config_path: Path, config_entries: dict[str, Path], backup_suf
     existing_keys = []
     for key, value in config_entries.items():
         if key not in config:
-            config[key] = value
+            config[key] = value.as_posix()
         else:
             existing_keys.append(key)
 
