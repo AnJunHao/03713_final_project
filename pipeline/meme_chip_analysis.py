@@ -127,49 +127,49 @@ def generate_meme_chip_scripts(config: BedtoolConfig) -> GeneratedMemeChipScript
             "input_name": f"{config.species_1}_to_{config.species_2}_{config.organ_1}_conserved_enhancers",
             "input_bed": config.species_1_to_species_2_organ_1_conserved_enhancers,
             "output_name": f"{config.species_1}_to_{config.species_2}_{config.organ_1}_enhancers",
-            "genome_fasta": config.species_1_genome_fasta
+            "genome_fasta": config.species_2_genome_fasta
         },
         {
             "input_name": f"{config.species_1}_to_{config.species_2}_{config.organ_2}_conserved_enhancers",
             "input_bed": config.species_1_to_species_2_organ_2_conserved_enhancers,
             "output_name": f"{config.species_1}_to_{config.species_2}_{config.organ_2}_enhancers",
-            "genome_fasta": config.species_1_genome_fasta
+            "genome_fasta": config.species_2_genome_fasta
         },
         {
             "input_name": f"{config.species_2}_to_{config.species_1}_{config.organ_1}_conserved_enhancers",
             "input_bed": config.species_2_to_species_1_organ_1_conserved_enhancers,
             "output_name": f"{config.species_2}_to_{config.species_1}_{config.organ_1}_enhancers",
-            "genome_fasta": config.species_2_genome_fasta
+            "genome_fasta": config.species_1_genome_fasta
         },
         {
             "input_name": f"{config.species_2}_to_{config.species_1}_{config.organ_2}_conserved_enhancers",
             "input_bed": config.species_2_to_species_1_organ_2_conserved_enhancers,
             "output_name": f"{config.species_2}_to_{config.species_1}_{config.organ_2}_enhancers",
-            "genome_fasta": config.species_2_genome_fasta
+            "genome_fasta": config.species_1_genome_fasta
         },
         {
             "input_name": f"{config.species_1}_to_{config.species_2}_{config.organ_1}_conserved_promoters",
             "input_bed": config.species_1_to_species_2_organ_1_conserved_promoters,
             "output_name": f"{config.species_1}_to_{config.species_2}_{config.organ_1}_promoters",
-            "genome_fasta": config.species_1_genome_fasta
+            "genome_fasta": config.species_2_genome_fasta
         },
         {
             "input_name": f"{config.species_1}_to_{config.species_2}_{config.organ_2}_conserved_promoters",
             "input_bed": config.species_1_to_species_2_organ_2_conserved_promoters,
             "output_name": f"{config.species_1}_to_{config.species_2}_{config.organ_2}_promoters",
-            "genome_fasta": config.species_1_genome_fasta
+            "genome_fasta": config.species_2_genome_fasta
         },
         {
             "input_name": f"{config.species_2}_to_{config.species_1}_{config.organ_1}_conserved_promoters",
             "input_bed": config.species_2_to_species_1_organ_1_conserved_promoters,
             "output_name": f"{config.species_2}_to_{config.species_1}_{config.organ_1}_promoters",
-            "genome_fasta": config.species_2_genome_fasta
+            "genome_fasta": config.species_1_genome_fasta
         },
         {
             "input_name": f"{config.species_2}_to_{config.species_1}_{config.organ_2}_conserved_promoters",
             "input_bed": config.species_2_to_species_1_organ_2_conserved_promoters,
             "output_name": f"{config.species_2}_to_{config.species_1}_{config.organ_2}_promoters",
-            "genome_fasta": config.species_2_genome_fasta
+            "genome_fasta": config.species_1_genome_fasta
         }
     ]
     
