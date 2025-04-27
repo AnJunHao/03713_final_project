@@ -32,9 +32,10 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_step_1:
         print("Step 1: Running HALPER pipeline...")
-        success = pipeline.run_halper_pipeline(args.config)
+        pipeline.run_halper_pipeline(args.config)
         print("Step 1: HALPER pipeline complete!")
     else:
+        pipeline.run_halper_pipeline(args.config, do_not_submit=True)
         print("Step 1: Skipped HALPER pipeline")
 
     print("="*100)
@@ -45,15 +46,16 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_step_3:
         print("Step 3: Running cross-species ortholog open vs closed pipeline...")
-        success = pipeline.run_cross_species_open_vs_closed_pipeline(args.config)
+        pipeline.run_cross_species_open_vs_closed_pipeline(args.config)
         print("Step 3: Cross-species ortholog open vs closed pipeline complete!")
     else:
+        pipeline.run_cross_species_open_vs_closed_pipeline(args.config, do_not_submit=True)
         print("Step 3: Skipped cross-species ortholog open vs closed pipeline")
 
     print("="*100)
     if not args.skip_step_4:
         print("Step 4: Running cross-tissues region shared vs species pipeline...")
-        success = pipeline.run_cross_tissues_shared_vs_specific_pipeline(args.config)
+        pipeline.run_cross_tissues_shared_vs_specific_pipeline(args.config)
         print("Step 4: Cross-tissues region shared vs species pipeline complete!")
     else:
         print("Step 4: Skipped cross-tissues region shared vs species pipeline")
