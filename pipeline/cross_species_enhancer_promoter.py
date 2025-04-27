@@ -435,7 +435,7 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
     print("\nCross-Species Shared Enhancer-Promoter Results:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
+def run_cross_species_enhancer_promoter_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     """
     Run the cross-species enhancer promoter pipeline
     
@@ -453,6 +453,9 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
 
     # Update the config file with the enhancer and promoter files
     update_config(config_path, script_output.conserved_ep_files, backup_suffix=".backup05")
+
+    if do_not_submit:
+        return True
 
     old_log_count = 0
     for log in script_output.output_logs + script_output.error_logs:

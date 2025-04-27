@@ -71,7 +71,7 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_step_6:
         print("Step 6: Running cross-species enhancers vs promoters pipeline...")
-        success = pipeline.run_cross_species_enhancer_promoter_pipeline(args.config)
+        pipeline.run_cross_species_enhancer_promoter_pipeline(args.config, do_not_submit=True)
         print("Step 6: Cross-species enhancers vs promoters pipeline complete!")
     else:
         print("Step 6: Skipped cross-species enhancers vs promoters pipeline")
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     print("="*100)
     if not args.skip_step_7:
         print("Step 7: Running MEME-chip analysis pipeline...")
-        success = pipeline.run_meme_chip_analysis_pipeline(args.config)
+        pipeline.run_meme_chip_analysis_pipeline(args.config)
         print("Step 7: MEME-chip analysis pipeline complete!")
     else:
         print("Step 7: Skipped MEME-chip analysis pipeline")
