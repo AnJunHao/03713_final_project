@@ -4,7 +4,8 @@ from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
-import yaml
+from pipeline.utils import update_config
+
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
 #SBATCH -t 0:10:00
@@ -434,28 +435,6 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
     print("\nCross-Species Shared Enhancer-Promoter Results:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def update_config(config_path: Path, conserved_ep_files: dict[str, Path]) -> None:
-    """
-    Update the configuration file with the enhancer and promoter files
-    """
-    # Create a backup of the original config file
-    backup_path = Path(f"{config_path}.backup05")
-    with open(config_path, "r") as src:
-        with open(backup_path, "w") as dst:
-            dst.write(src.read())
-    
-    # Read the config file
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
-    
-    # Update the config file with the enhancer and promoter files
-    for key, value in conserved_ep_files.items():
-        config[key] = str(value)
-    
-    # Write the updated config file
-    with open(config_path, "w") as f:
-        yaml.dump(config, f)
-
 def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     """
     Run the cross-species enhancer promoter pipeline
@@ -473,7 +452,7 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     script_output = generate_script(config)
 
     # Update the config file with the enhancer and promoter files
-    update_config(config_path, script_output.conserved_ep_files)
+    update_config(config_path, script_output.conserved_ep_files, backup_suffix=".backup05")
 
     old_log_count = 0
     for log in script_output.output_logs + script_output.error_logs:

@@ -28,6 +28,10 @@ class BedtoolConfig:
     species_1_tss_file: Path
     species_2_tss_file: Path
 
+    # Genome fasta files
+    species_1_genome_fasta: Path
+    species_2_genome_fasta: Path
+
     # Conserved files (optional)
     species_1_to_species_2_organ_1_conserved: Path | None
     species_1_to_species_2_organ_2_conserved: Path | None
@@ -118,6 +122,8 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
         species_1_tss_file=Path(config["species_1_TSS_file"]),
         species_2_tss_file=Path(config["species_2_TSS_file"]),
+        species_1_genome_fasta=Path(config["species_1_genome_fasta"]),
+        species_2_genome_fasta=Path(config["species_2_genome_fasta"]),
         # Conserved files (optional)
         species_1_to_species_2_organ_1_conserved=Path(config["species_1_to_species_2_organ_1_conserved"])\
             if "species_1_to_species_2_organ_1_conserved" in config else None,
