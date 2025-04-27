@@ -121,7 +121,17 @@ def monitor_jobs(output_logs: list[Path],
         print(f"🎉 All {total_jobs} jobs completed successfully in {elapsed_str[17:]}")
     elif completed_jobs == 0:
         print(f"❌ All {total_jobs} jobs failed")
+        # Print error log locations for all failed jobs
+        print("\nError log locations:")
+        for err_log in error_logs:
+            if err_log.exists() and err_log.stat().st_size > 0:
+                print(f"  - {err_log.absolute()}")
     else:
         print(f"⚠️ {completed_jobs}/{total_jobs} jobs completed, {error_jobs} jobs failed")
+        # Print error log locations for failed jobs
+        print("\nError log locations:")
+        for i, (out_log, err_log) in enumerate(zip(output_logs, error_logs)):
+            if job_statuses[str(out_log)] == "ERROR" and err_log.exists() and err_log.stat().st_size > 0:
+                print(f"  - {err_log.absolute()}")
     
     return error_jobs == 0
