@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
-from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
+from pipeline.bedtool_preprocess import Config, load_bedtool_config
 from tabulate import tabulate
 from pipeline.utils import update_config
 
@@ -93,7 +93,7 @@ class GeneratedScriptOutput(NamedTuple):
     error_logs: list[Path]
     enhancer_promoter_files: dict[str, Path]
 
-def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
+def generate_script(config: Config) -> GeneratedScriptOutput:
     """
     Generate scripts to run the enhancer vs promoter analysis
     
