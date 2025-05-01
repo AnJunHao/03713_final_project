@@ -261,7 +261,26 @@ Examines the evolutionary conservation of different types of regulatory elements
 *Estimated runtime (excluding queuing time): < 30 seconds*
 
 ### Step 7: Motif Alignment
-TODO: add description
+
+Performs a comprehensive motif analysis on inputted nucleotide sequence data by: 
+- Scanning open chromatin regions for motifs in conserved nucleotide regions across liver and pancreas tissue data for both human and mouse over promoter and enhancer regions
+- Appropriately finding the motifs that occur in these OCRs significantly more than expected by chance
+- Finding motifs that are typically centered around peak summits
+- Running MEME, STREME, CENTRIMO, TOMTOM, FIMO and SPAMO to determine statistically significant motif alignments 
+
+Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands:
+```bash
+conda create -n meme
+conda config --env --add channels defaults
+conda config --env --add channels bioconda
+conda config --env --add channels conda-forge
+conda activate meme
+```
+
+Download MEME suite in the established conda environment using the following commands (any version number of MEME suite can be downloaded with this command):
+```bash
+conda install MEME-suite
+```
 
 *Estimated runtime (excluding queuing time): < 3 hours*
 
