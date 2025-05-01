@@ -1,0 +1,22 @@
+MOTIF_INDEX	MOTIF_SOURCE	MOTIF_ID	ALT_ID	CONSENSUS	WIDTH	SITES	E-VALUE	E-VALUE_SOURCE	MOST_SIMILAR_MOTIF_SOURCE	MOST_SIMILAR_MOTIF	URL
+1	STREME	1-RGGGGCGGGGCBD	STREME-1	RGGGGCGGGGCBD	13	1881	1.4e-019	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1513.1 (KLF15)	http://jaspar2022.genereg.net/matrix/MA1513.1
+2	STREME	2-CCASYAGRKGGCRSY	STREME-2	CCASYAGRKGGCRSY	15	640	6.5e-009	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0139.1 (CTCF)	http://jaspar2022.genereg.net/matrix/MA0139.1
+3	STREME	3-YRRCCAATCR	STREME-3	YRRCCAATCR	10	658	4.2e-008	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1644.1 (NFYC)	http://jaspar2022.genereg.net/matrix/MA1644.1
+4	STREME	4-GCCGCCGCCGCCGC	STREME-4	GCCGCCGCCGCCGC	14	840	1.1e-007	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1721.1 (ZNF93)	http://jaspar2022.genereg.net/matrix/MA1721.1
+5	STREME	5-GCGCATGCGCASW	STREME-5	GCGCATGCGCASW	13	292	2.0e-007	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0506.2 (Nrf1)	http://jaspar2022.genereg.net/matrix/MA0506.2
+6	STREME	6-GTSACGTSA	STREME-6	GTSACGTSA	9	385	2.2e-007	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0831.3 (TFE3)	http://jaspar2022.genereg.net/matrix/MA0831.3
+7	STREME	7-AAGATGGCGGCGSS	STREME-7	AAGATGGCGGCGSS	14	340	1.5e-005	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0748.2 (YY2)	http://jaspar2022.genereg.net/matrix/MA0748.2
+8	STREME	8-CCCCMCCCCCACCCC	STREME-8	CCCCMCCCCCACCCC	15	383	4.5e-004	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1627.1 (Wt1)	http://jaspar2022.genereg.net/matrix/MA1627.1
+9	STREME	9-ACTACAAYTCCCAGA	STREME-9	ACTACAAYTCCCAGA	15	196	4.8e-004	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1573.2 (Thap11)	http://jaspar2022.genereg.net/matrix/MA1573.2
+10	STREME	10-CKCCATGGCKGC	STREME-10	10-CKCCATGGCKGC	12	302	2.2e-003	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0748.2 (YY2)	http://jaspar2022.genereg.net/matrix/MA0748.2
+11	STREME	11-YACTTCCGGKT	STREME-11	11-YACTTCCGGKT	11	478	2.2e-003	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0641.1 (ELF4)	http://jaspar2022.genereg.net/matrix/MA0641.1
+12	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1589.1	ZNF140	TAGGAGYGGAATTGCTGGGTC	21	4	5.5e-003	CENTRIMO	 	 	http://jaspar2022.genereg.net/matrix/MA1589.1
+13	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0509.3	RFX1	SGTTGCCATGGCAACS	16	8	7.0e-003	CENTRIMO	 	 	http://jaspar2022.genereg.net/matrix/MA0509.3
+14	STREME	12-AGCCCGAG	STREME-12	12-AGCCCGAG	8	1069	7.7e-003	STREME	 	 	 
+15	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0686.1	SPDEF	AMCCGGATGTR	11	16	9.4e-003	CENTRIMO	 	 	http://jaspar2022.genereg.net/matrix/MA0686.1
+16	STREME	13-CCCGGCCCCGGCC	STREME-13	13-CCCGGCCCCGGCC	13	389	3.7e-002	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA1615.1 (Plagl1)	http://jaspar2022.genereg.net/matrix/MA1615.1
+17	STREME	14-GAGGARGRGGAGGAG	STREME-14	14-GAGGARGRGGAGGAG	15	781	4.0e-002	STREME	db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme	MA0528.2 (ZNF263)	http://jaspar2022.genereg.net/matrix/MA0528.2
+
+# MEME-ChIP (Motif Analysis of Large Nucleotide Datasets): Version 5.5.7 released on Wed Jun 19 13:59:04 2024 -0700
+# The format of this file is described at https://meme-suite.org/meme//doc/meme-chip-output-format.html
+# meme-chip -oc . -time 240 -ccut 100 -dna -order 2 -minw 6 -maxw 15 -db db/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant_v2.meme -meme-mod zoops -meme-nmotifs 3 -meme-searchsize 100000 -streme-pvt 0.05 -streme-align center -streme-totallength 4000000 -centrimo-score 5.0 -centrimo-ethresh 10.0 human_mouse_liverP.fa
