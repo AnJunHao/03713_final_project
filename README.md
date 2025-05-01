@@ -240,17 +240,17 @@ Performs a comprehensive motif analysis on inputted nucleotide sequence data by:
 - Finding motifs that are typically centered around peak summits
 - Running MEME, STREME, CENTRIMO, TOMTOM, FIMO and SPAMO to determine statistically significant motif alignments 
 
-Set-up an Anaconda (conda) environment and add channels to the environment using the following commands:
+Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands:
 ```bash
 conda create -n meme
 conda config --env --add channels defaults
 conda config --env --add channels bioconda
 conda config --env --add channels conda-forge
+conda activate meme
 ```
 
-Activate the conda environment and download MEME suite, using the following commands (any version number of MEME suite can be downloaded with this command):
+Download MEME suite in the established conda environment using the following commands (any version number of MEME suite can be downloaded with this command):
 ```bash
-conda activate meme
 conda install MEME-suite
 ```
 
