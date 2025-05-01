@@ -57,6 +57,7 @@ This pipeline relies on external bioinformatics tools. Please install them and e
 *   **MEME-ChIP:** Used for comprehensive motif analysis. Installation instructions for different operating systems can be found on the [MEME-suite website](https://meme-suite.org/meme//doc/download.html)
 
 You may also need to run the following command line prompts:
+
 Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands.
 ```bash
 conda create -n meme
