@@ -22,7 +22,7 @@ echo "Job finished"
 
 meme_chip_script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 2:00:00
+#SBATCH -t 3:00:00
 #SBATCH --ntasks-per-node=16
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
