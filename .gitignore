@@ -161,4 +161,4 @@ cython_debug/
 
 # Ignore .Rhistory and .DS_Store files
 .Rhistory
-# .DS_Store
+.DS_Store
