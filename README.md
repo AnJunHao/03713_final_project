@@ -54,6 +54,22 @@ This pipeline relies on external bioinformatics tools. Please install them and e
 *   **HAL Tools:** Required for HALPER. Follow the official installation guide:
     *   🔗 [HAL installation instructions](https://github.com/pfenninglab/halLiftover-postprocessing/blob/master/hal_install_instructions.md)
 *   **BedTools:** Used for genomic interval operations. Installation instructions can be found on the [BedTools website](https://bedtools.readthedocs.io/en/latest/content/installation.html).
+*   **MEME-ChIP:** Used for comprehensive motif analysis. Installation instructions for different operating systems can be found on the [MEME-suite website](https://meme-suite.org/meme//doc/download.html)
+
+You may also need to run the following command line prompts:
+Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands.
+```bash
+conda create -n meme
+conda config --env --add channels defaults
+conda config --env --add channels bioconda
+conda config --env --add channels conda-forge
+conda activate meme
+```
+
+Download MEME suite in the established conda environment using the following commands (any version number of MEME suite can be downloaded with this command).
+```bash
+conda install MEME-suite
+```
 
 ## 2. Configuration (`config.yaml`)
 
@@ -267,20 +283,6 @@ Performs a comprehensive motif analysis on inputted nucleotide sequence data by:
 - Appropriately finding the motifs that occur in these OCRs significantly more than expected by chance
 - Finding motifs that are typically centered around peak summits
 - Running MEME, STREME, CENTRIMO, TOMTOM, FIMO and SPAMO to determine statistically significant motif alignments 
-
-Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands:
-```bash
-conda create -n meme
-conda config --env --add channels defaults
-conda config --env --add channels bioconda
-conda config --env --add channels conda-forge
-conda activate meme
-```
-
-Download MEME suite in the established conda environment using the following commands (any version number of MEME suite can be downloaded with this command):
-```bash
-conda install MEME-suite
-```
 
 *Estimated runtime (excluding queuing time): < 3 hours*
 
