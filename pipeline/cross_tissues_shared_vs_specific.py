@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
-from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
+from pipeline.bedtool_preprocess import Config, load_bedtool_config
 from tabulate import tabulate
 
 script_template = """#!/bin/bash
@@ -47,7 +47,7 @@ class GeneratedScriptOutput(NamedTuple):
     output_logs: list[Path]
     error_logs: list[Path]
 
-def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
+def generate_script(config: Config) -> GeneratedScriptOutput:
     """
     Generate scripts to run the bedtools analysis for different species and tissue combinations.
 

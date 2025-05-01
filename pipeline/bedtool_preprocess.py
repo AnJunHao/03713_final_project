@@ -4,7 +4,7 @@ import subprocess
 import yaml
 
 @dataclass
-class BedtoolConfig:
+class Config:
     species_1: str
     species_2: str
     organ_1: str
@@ -18,11 +18,11 @@ class BedtoolConfig:
     species_2_organ_1_peak_file: Path
     species_2_organ_2_peak_file: Path
     
-    # HALPER output files - all four directions
-    species_1_organ_1_to_species_2: Path
-    species_1_organ_2_to_species_2: Path
-    species_2_organ_1_to_species_1: Path
-    species_2_organ_2_to_species_1: Path
+    # HALPER output files - all four directions (optional)
+    species_1_organ_1_to_species_2: Path | None
+    species_1_organ_2_to_species_2: Path | None
+    species_2_organ_1_to_species_1: Path | None
+    species_2_organ_2_to_species_1: Path | None
     
     # TSS files
     species_1_tss_file: Path
@@ -71,6 +71,8 @@ class BedtoolConfig:
                            self.species_1_organ_2_to_species_2,
                            self.species_2_organ_1_to_species_1,
                            self.species_2_organ_2_to_species_1]:
+            if halper_file is None:
+                continue
             # If the narrowPeak file exists, if not, check the gzipped file
             if not halper_file.exists():
                 zipped_halper_file = halper_file.with_suffix(".gz")
@@ -90,7 +92,7 @@ class BedtoolConfig:
             self.output_dir.mkdir(parents=True, exist_ok=True)
             print(f"Created output directory {self.output_dir}")
 
-def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConfig:
+def load_bedtool_config(config_path: Path, output_dir_entry: str) -> Config:
     """
     Load bedtool configuration from a YAML file and a HalperOutput object.
     
@@ -104,7 +106,7 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
-    return BedtoolConfig(
+    return Config(
         species_1=config["species_1"],
         species_2=config["species_2"],
         organ_1=config["organ_1"],
@@ -116,10 +118,14 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_2_organ_1_peak_file=Path(config["species_2_organ_1_peak_file_cleaned"]),
         species_2_organ_2_peak_file=Path(config["species_2_organ_2_peak_file_cleaned"]),
         # Use the HalperOutput object for mapping files
-        species_1_organ_1_to_species_2=Path(config["species_1_organ_1_to_species_2_cleaned"]),
-        species_1_organ_2_to_species_2=Path(config["species_1_organ_2_to_species_2_cleaned"]),
-        species_2_organ_1_to_species_1=Path(config["species_2_organ_1_to_species_1_cleaned"]),
-        species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
+        species_1_organ_1_to_species_2=Path(config["species_1_organ_1_to_species_2_cleaned"])\
+            if "species_1_organ_1_to_species_2_cleaned" in config else None,
+        species_1_organ_2_to_species_2=Path(config["species_1_organ_2_to_species_2_cleaned"])\
+            if "species_1_organ_2_to_species_2_cleaned" in config else None,
+        species_2_organ_1_to_species_1=Path(config["species_2_organ_1_to_species_1_cleaned"])\
+            if "species_2_organ_1_to_species_1_cleaned" in config else None,
+        species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"])\
+            if "species_2_organ_2_to_species_1_cleaned" in config else None,
         species_1_tss_file=Path(config["species_1_TSS_file"]),
         species_2_tss_file=Path(config["species_2_TSS_file"]),
         species_1_genome_fasta=Path(config["species_1_genome_fasta"]),
@@ -188,6 +194,8 @@ def bedtool_preprocess(config_path: Path) -> None:
                   "species_1_organ_2_to_species_2",
                   "species_2_organ_1_to_species_1",
                   "species_2_organ_2_to_species_1"]:
+        if entry not in config:
+            continue
         halper_file = Path(config[entry])
         if not halper_file.exists():
             # Check if the unzipped file exists
@@ -210,6 +218,8 @@ def bedtool_preprocess(config_path: Path) -> None:
                   "species_1_organ_2_to_species_2",
                   "species_2_organ_1_to_species_1",
                   "species_2_organ_2_to_species_1"]:
+        if entry not in config:
+            continue
         halper_file = Path(config[entry])
         cleaned_file = cleaned_dir / halper_file.name
         if not cleaned_file.exists():

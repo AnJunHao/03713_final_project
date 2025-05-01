@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
-from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
+from pipeline.bedtool_preprocess import Config, load_bedtool_config
 from tabulate import tabulate
 
 faidx_script_template = """#!/bin/bash
@@ -22,7 +22,7 @@ echo "Job finished"
 
 meme_chip_script_template = """#!/bin/bash
 #SBATCH -p RM-shared
-#SBATCH -t 2:00:00
+#SBATCH -t 3:00:00
 #SBATCH --ntasks-per-node=16
 #SBATCH --error={error_log}
 #SBATCH --output={output_log}
@@ -56,7 +56,7 @@ class GeneratedMemeChipScriptOutput(NamedTuple):
     error_logs: list[Path]
     meme_chip_output_dirs: dict[str, Path]
 
-def generate_meme_chip_scripts(config: BedtoolConfig) -> GeneratedMemeChipScriptOutput:
+def generate_meme_chip_scripts(config: Config) -> GeneratedMemeChipScriptOutput:
     """
     Generate scripts to run the MEME-chip analysis
     
