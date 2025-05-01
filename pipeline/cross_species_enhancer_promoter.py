@@ -4,6 +4,7 @@ from typing import NamedTuple
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
+from pipeline.utils import update_config
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
@@ -89,6 +90,7 @@ class GeneratedScriptOutput(NamedTuple):
     shared_master_script: Path
     output_logs: list[Path]
     error_logs: list[Path]
+    conserved_ep_files: dict[str, Path]
 
 def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
@@ -112,6 +114,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     shared_scripts: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
+    conserved_ep_files: dict[str, Path] = {}
     
     # Define the four combinations for initial classification (all directions)
     combinations = [
@@ -121,6 +124,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_1,
             "conserved_file": config.species_1_to_species_2_organ_1_conserved,
             "tss_file": config.species_2_tss_file,  # Use the target species TSS file
+            "prefix": f"species_1_to_species_2_organ_1_conserved"
         },
         {
             "species_from": config.species_1,
@@ -128,6 +132,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_2,
             "conserved_file": config.species_1_to_species_2_organ_2_conserved,
             "tss_file": config.species_2_tss_file,
+            "prefix": f"species_1_to_species_2_organ_2_conserved"
         },
         {
             "species_from": config.species_2,
@@ -135,6 +140,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_1,
             "conserved_file": config.species_2_to_species_1_organ_1_conserved,
             "tss_file": config.species_1_tss_file,
+            "prefix": f"species_2_to_species_1_organ_1_conserved"
         },
         {
             "species_from": config.species_2,
@@ -142,6 +148,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
             "tissue": config.organ_2,
             "conserved_file": config.species_2_to_species_1_organ_2_conserved,
             "tss_file": config.species_1_tss_file,
+            "prefix": f"species_2_to_species_1_organ_2_conserved"
         }
     ]
     
@@ -152,7 +159,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         tissue = combo["tissue"]
         conserved_file = combo["conserved_file"]
         tss_file = combo["tss_file"]
-        
+        prefix = combo["prefix"]
         script_path = config.temp_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.job"
         error_log = config.output_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.err.txt"
         output_log = config.output_dir / f"cross_species_enhancer_promoter_{species_from}_to_{species_to}_{tissue}.out.txt"
@@ -172,7 +179,9 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         classification_scripts.append(script_path)
         output_logs.append(output_log)
         error_logs.append(error_log)
-    
+        conserved_ep_files[prefix+"_promoters"] = config.output_dir / f"{species_from}_to_{species_to}_{tissue}_conserved_promoters.bed"
+        conserved_ep_files[prefix+"_enhancers"] = config.output_dir / f"{species_from}_to_{species_to}_{tissue}_conserved_enhancers.bed"
+
     # Create scripts for finding shared regions across species (per tissue)
     shared_combinations = [
         {
@@ -264,6 +273,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
         shared_master_script=shared_master_script,
         output_logs=output_logs,
         error_logs=error_logs,
+        conserved_ep_files=conserved_ep_files
     )
 
 def extract_classification_counts(output_logs: list[Path], output_csv: Path) -> list:
@@ -425,7 +435,7 @@ def extract_shared_counts(output_logs: list[Path], output_csv: Path, classificat
     print("\nCross-Species Shared Enhancer-Promoter Results:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
+def run_cross_species_enhancer_promoter_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     """
     Run the cross-species enhancer promoter pipeline
     
@@ -440,6 +450,12 @@ def run_cross_species_enhancer_promoter_pipeline(config_path: Path) -> bool:
     
     # Generate scripts
     script_output = generate_script(config)
+
+    # Update the config file with the enhancer and promoter files
+    update_config(config_path, script_output.conserved_ep_files, backup_suffix=".backup05")
+
+    if do_not_submit:
+        return True
 
     old_log_count = 0
     for log in script_output.output_logs + script_output.error_logs:

@@ -28,6 +28,10 @@ class BedtoolConfig:
     species_1_tss_file: Path
     species_2_tss_file: Path
 
+    # Genome fasta files
+    species_1_genome_fasta: Path
+    species_2_genome_fasta: Path
+
     # Conserved files (optional)
     species_1_to_species_2_organ_1_conserved: Path | None
     species_1_to_species_2_organ_2_conserved: Path | None
@@ -43,6 +47,16 @@ class BedtoolConfig:
     species_2_organ_1_enhancers: Path | None
     species_2_organ_2_promoters: Path | None
     species_2_organ_2_enhancers: Path | None
+
+    # Mapped Promoter/enhancer files (optional)
+    species_1_to_species_2_organ_1_conserved_promoters: Path | None
+    species_1_to_species_2_organ_1_conserved_enhancers: Path | None
+    species_1_to_species_2_organ_2_conserved_promoters: Path | None
+    species_1_to_species_2_organ_2_conserved_enhancers: Path | None
+    species_2_to_species_1_organ_1_conserved_promoters: Path | None
+    species_2_to_species_1_organ_1_conserved_enhancers: Path | None
+    species_2_to_species_1_organ_2_conserved_promoters: Path | None
+    species_2_to_species_1_organ_2_conserved_enhancers: Path | None
 
     def __post_init__(self):
         # Check if peak files exist
@@ -67,10 +81,9 @@ class BedtoolConfig:
             assert halper_file.exists(), f"HALPER file {halper_file} does not exist"
         
         # Check if TSS files exist
-        for tss_file_name, tss_file in [("species_1_tss_file", self.species_1_tss_file),
-                                      ("species_2_tss_file", self.species_2_tss_file)]:
-            if tss_file is not None:
-                assert tss_file.exists(), f"TSS file {tss_file} does not exist"
+        for tss_file in [self.species_1_tss_file,
+                         self.species_2_tss_file]:
+            assert tss_file.exists(), f"TSS file {tss_file} does not exist"
         
         # Create output directory if it doesn't exist
         if not self.output_dir.exists():
@@ -109,6 +122,8 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
         species_2_organ_2_to_species_1=Path(config["species_2_organ_2_to_species_1_cleaned"]),
         species_1_tss_file=Path(config["species_1_TSS_file"]),
         species_2_tss_file=Path(config["species_2_TSS_file"]),
+        species_1_genome_fasta=Path(config["species_1_genome_fasta"]),
+        species_2_genome_fasta=Path(config["species_2_genome_fasta"]),
         # Conserved files (optional)
         species_1_to_species_2_organ_1_conserved=Path(config["species_1_to_species_2_organ_1_conserved"])\
             if "species_1_to_species_2_organ_1_conserved" in config else None,
@@ -135,6 +150,23 @@ def load_bedtool_config(config_path: Path, output_dir_entry: str) -> BedtoolConf
             if "species_2_organ_2_promoters" in config else None,
         species_2_organ_2_enhancers=Path(config["species_2_organ_2_enhancers"])\
             if "species_2_organ_2_enhancers" in config else None,
+        # Mapped Promoter/enhancer files (optional)
+        species_1_to_species_2_organ_1_conserved_promoters=Path(config["species_1_to_species_2_organ_1_conserved_promoters"])\
+            if "species_1_to_species_2_organ_1_conserved_promoters" in config else None,
+        species_1_to_species_2_organ_1_conserved_enhancers=Path(config["species_1_to_species_2_organ_1_conserved_enhancers"])\
+            if "species_1_to_species_2_organ_1_conserved_enhancers" in config else None,
+        species_1_to_species_2_organ_2_conserved_promoters=Path(config["species_1_to_species_2_organ_2_conserved_promoters"])\
+            if "species_1_to_species_2_organ_2_conserved_promoters" in config else None,
+        species_1_to_species_2_organ_2_conserved_enhancers=Path(config["species_1_to_species_2_organ_2_conserved_enhancers"])\
+            if "species_1_to_species_2_organ_2_conserved_enhancers" in config else None,
+        species_2_to_species_1_organ_1_conserved_promoters=Path(config["species_2_to_species_1_organ_1_conserved_promoters"])\
+            if "species_2_to_species_1_organ_1_conserved_promoters" in config else None,
+        species_2_to_species_1_organ_1_conserved_enhancers=Path(config["species_2_to_species_1_organ_1_conserved_enhancers"])\
+            if "species_2_to_species_1_organ_1_conserved_enhancers" in config else None,
+        species_2_to_species_1_organ_2_conserved_promoters=Path(config["species_2_to_species_1_organ_2_conserved_promoters"])\
+            if "species_2_to_species_1_organ_2_conserved_promoters" in config else None,
+        species_2_to_species_1_organ_2_conserved_enhancers=Path(config["species_2_to_species_1_organ_2_conserved_enhancers"])\
+            if "species_2_to_species_1_organ_2_conserved_enhancers" in config else None,
     )
 
 def bedtool_preprocess(config_path: Path) -> None:

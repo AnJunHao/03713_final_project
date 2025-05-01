@@ -1,6 +1,6 @@
 # Cross-Species and Cross-Tissue Chromatin Accessibility Analysis Pipeline
 
-This project provides a pipeline for comparing chromatin accessibility data (e.g., ATAC-seq peaks) across different species and tissues. It leverages HALPER for ortholog mapping and performs various downstream analyses to identify conserved, species-specific, and tissue-specific regulatory elements. Here is a 37-second demo video of the pipeline: 🎥 [Project Demo Video](https://youtu.be/aQjV1WrcCD0)
+This project provides a pipeline for comparing chromatin accessibility data (e.g., ATAC-seq peaks) across different species and tissues. It leverages HALPER for ortholog mapping and performs downstream analyses including: (1) identification of conserved vs. species-specific regulatory elements, (2) detection of tissue-shared vs. tissue-specific regions, (3) classification and comparison of enhancers vs. promoters within and across species, and (4) functional enrichment analysis of identified regulatory elements. Here is a 37-second demo video of the pipeline: 🎥 [Project Demo Video](https://youtu.be/aQjV1WrcCD0)
 
 ## 0. Folder Structure
 
@@ -44,7 +44,7 @@ python --version
 Install the required Python packages. These packages are installed by default on the PSC Bridges-2 cluster, so you may see messages like `Requirement already satisfied`.
 
 ```bash
-pip install pyyaml tabulate
+pip install pyyaml tabulate pydantic
 ```
 
 ### 1.3. Install Required Tools
@@ -186,7 +186,7 @@ Maps regulatory elements (peaks) from one species to another using the HALPER to
 - Generates mapped peak files in the target species' genome coordinates
 - Creates the foundation for all downstream cross-species analyses
 
-*Estimated runtime: ~3 hours*
+*Estimated runtime: ~4 hours*
 
 ### Step 2: BedTools Preprocessing (`pipeline/bedtool_preprocess.py`)
 Prepares the data for the downstream analyses by:
@@ -195,7 +195,7 @@ Prepares the data for the downstream analyses by:
 - Creating clean BED files for use in subsequent steps
 - Updating the configuration with paths to these cleaned files
 
-*Estimated runtime: < 10 seconds*
+*Estimated runtime: < 30 seconds*
 
 ### Step 3: Cross-Species Ortholog Comparison (Open vs. Closed) (`pipeline/cross_species_open_vs_closed.py`)
 Identifies conserved and species-specific regulatory elements by:

@@ -4,7 +4,7 @@ from typing import NamedTuple, Literal
 from pipeline.monitor import monitor_jobs
 from pipeline.bedtool_preprocess import BedtoolConfig, load_bedtool_config
 from tabulate import tabulate
-import yaml
+from pipeline.utils import update_config
 
 script_template = """#!/bin/bash
 #SBATCH -p RM-shared
@@ -47,10 +47,7 @@ class GeneratedScriptOutput(NamedTuple):
     script: Path
     output_logs: list[Path]
     error_logs: list[Path]
-    config_entries: dict[Literal["species_1_to_species_2_organ_1_conserved",
-                                 "species_1_to_species_2_organ_2_conserved",
-                                 "species_2_to_species_1_organ_1_conserved",
-                                 "species_2_to_species_1_organ_2_conserved"], Path]
+    config_entries: dict[str, Path]
 
 def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     """
@@ -65,10 +62,7 @@ def generate_script(config: BedtoolConfig) -> GeneratedScriptOutput:
     script_paths: list[Path] = []
     output_logs: list[Path] = []
     error_logs: list[Path] = []
-    config_entries: dict[Literal["species_1_to_species_2_organ_1_conserved",
-                                 "species_1_to_species_2_organ_2_conserved",
-                                 "species_2_to_species_1_organ_1_conserved",
-                                 "species_2_to_species_1_organ_2_conserved"], Path] = {}
+    config_entries: dict[str, Path] = {}
     
     # Define the four combinations we want to analyze
     combinations = [
@@ -186,28 +180,6 @@ def extract_peak_counts(output_logs: list[Path], output_csv: Path) -> None:
     print("Peak Counts Summary:")
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
-def update_config(config_path: Path, conserved_files: dict[str, Path]) -> None:
-    """
-    Update the config file with the conserved files.
-    """
-    # First, backup the original config file
-    backup_path = Path(f"{config_path}.backup03")
-    with open(config_path, "r") as src:
-        with open(backup_path, "w") as dst:
-            dst.write(src.read())
-    
-    # Read the config file
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
-    
-    # Update the config file with the conserved files
-    for key, value in conserved_files.items():
-        config[key] = value.as_posix()
-    
-    # Write the updated config file
-    with open(config_path, "w") as f:
-        yaml.dump(config, f)
-
 def run_cross_species_open_vs_closed_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     """
     Run the bedtools comparison pipeline.
@@ -218,7 +190,7 @@ def run_cross_species_open_vs_closed_pipeline(config_path: Path, do_not_submit: 
     config = load_bedtool_config(config_path, "cross_species_open_vs_closed_output_dir")
     script_output = generate_script(config)
     script_path = script_output.script
-    update_config(config_path, script_output.config_entries) # type: ignore
+    update_config(config_path, script_output.config_entries, backup_suffix=".backup03")
 
     if do_not_submit:
         return True

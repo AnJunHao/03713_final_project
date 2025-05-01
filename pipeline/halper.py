@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import yaml
-from typing import NamedTuple
+from typing import NamedTuple, Literal
 from pipeline.monitor import monitor_jobs
+from pipeline.utils import update_config
 
 @dataclass
 class HalperConfig:
@@ -82,17 +83,11 @@ bash {halper_script} \
 echo "Job finished"
 """
 
-class HalperOutput(NamedTuple):
-    species_1_organ_1_to_species_2: Path
-    species_1_organ_2_to_species_2: Path
-    species_2_organ_1_to_species_1: Path
-    species_2_organ_2_to_species_1: Path
-
 class GeneratedScriptOutput(NamedTuple):
     master_script: Path
     output_logs: list[Path]
     error_logs: list[Path]
-    halper_output: HalperOutput
+    halper_output: dict[str, Path]
 
 def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
     """
@@ -200,45 +195,17 @@ def generate_script(config: HalperConfig) -> GeneratedScriptOutput:
     master_script.chmod(0o755)  # Make the master script executable
     
     # Create the HalperOutput object with the expected output files
-    halper_output_result = HalperOutput(
-        species_1_organ_1_to_species_2=halper_output[0],
-        species_1_organ_2_to_species_2=halper_output[1],
-        species_2_organ_1_to_species_1=halper_output[2],
-        species_2_organ_2_to_species_1=halper_output[3]
-    )
+    halper_output_result: dict[str, Path] = {
+        "species_1_organ_1_to_species_2": halper_output[0],
+        "species_1_organ_2_to_species_2": halper_output[1],
+        "species_2_organ_1_to_species_1": halper_output[2],
+        "species_2_organ_2_to_species_1": halper_output[3]
+    }
     
     return GeneratedScriptOutput(master_script,
                                  output_logs,
                                  error_logs,
                                  halper_output_result)
-
-def update_config(config_path: Path, halper_output: HalperOutput) -> None:
-    """
-    Update the config file with the HalperOutput entries.
-    
-    Args:
-        config_path: Path to the config file
-        halper_output: HalperOutput object containing output file paths
-    """
-    # Create backup of original config file
-    backup_path = Path(f"{config_path}.backup01")
-    with open(config_path, "r") as src:
-        with open(backup_path, "w") as dst:
-            dst.write(src.read())
-    
-    # Load existing config
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
-    
-    # Add HalperOutput entries to config
-    config["species_1_organ_1_to_species_2"] = str(halper_output.species_1_organ_1_to_species_2)
-    config["species_1_organ_2_to_species_2"] = str(halper_output.species_1_organ_2_to_species_2)
-    config["species_2_organ_1_to_species_1"] = str(halper_output.species_2_organ_1_to_species_1)
-    config["species_2_organ_2_to_species_1"] = str(halper_output.species_2_organ_2_to_species_1)
-    
-    # Write updated config back to file
-    with open(config_path, "w") as f:
-        yaml.safe_dump(config, f, default_flow_style=False)
 
 def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     """
@@ -256,7 +223,7 @@ def run_halper_pipeline(config_path: Path, do_not_submit: bool = False) -> bool:
     output_logs = script_output.output_logs
     error_logs = script_output.error_logs
     halper_output = script_output.halper_output
-    update_config(config_path, halper_output)
+    update_config(config_path, halper_output, backup_suffix=".backup01")
 
     if do_not_submit:
         return True
