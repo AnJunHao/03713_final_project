@@ -56,21 +56,21 @@ This pipeline relies on external bioinformatics tools. Please install them and e
 *   **BedTools:** Used for genomic interval operations. Installation instructions can be found on the [BedTools website](https://bedtools.readthedocs.io/en/latest/content/installation.html).
 *   **MEME-ChIP:** Used for comprehensive motif analysis. Installation instructions for different operating systems can be found on the [MEME-suite website](https://meme-suite.org/meme//doc/download.html)
 
-You may also need to run the following command line prompts:
+MEME-ChIP is already installed on the PSC Bridges-2 cluster, so you typically don't need to install manually. If you are running this pipeline on a different cluster, you may also need to run the following command line prompts:
 
-Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands.
-```bash
-conda create -n meme
-conda config --env --add channels defaults
-conda config --env --add channels bioconda
-conda config --env --add channels conda-forge
-conda activate meme
-```
-
-Download MEME suite in the established conda environment using the following commands (any version number of MEME suite can be downloaded with this command).
-```bash
-conda install MEME-suite
-```
+> Set-up an Anaconda (conda) environment, add channels to the environment and activate the environment using the following commands.
+> ```bash
+> conda create -n meme
+> conda config --env --add channels defaults
+> conda config --env --add channels bioconda
+> conda config --env --add channels conda-forge
+> conda activate meme
+> ```
+> 
+> Download MEME suite in the established conda environment using the following commands (any version number of MEME suite can be downloaded with this command).
+> ```bash
+> conda install MEME-suite
+> ```
 
 ## 2. Configuration (`config.yaml`)
 
