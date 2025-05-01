@@ -2,10 +2,9 @@ from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import yaml
-from pydantic import BaseModel, validator, root_validator
-from typing import Optional, Union
 
-class Config(BaseModel):
+@dataclass
+class Config:
     species_1: str
     species_2: str
     organ_1: str
@@ -20,10 +19,10 @@ class Config(BaseModel):
     species_2_organ_2_peak_file: Path
     
     # HALPER output files - all four directions (optional)
-    species_1_organ_1_to_species_2: Optional[Path] = None
-    species_1_organ_2_to_species_2: Optional[Path] = None
-    species_2_organ_1_to_species_1: Optional[Path] = None
-    species_2_organ_2_to_species_1: Optional[Path] = None
+    species_1_organ_1_to_species_2: Path | None
+    species_1_organ_2_to_species_2: Path | None
+    species_2_organ_1_to_species_1: Path | None
+    species_2_organ_2_to_species_1: Path | None
     
     # TSS files
     species_1_tss_file: Path
@@ -34,73 +33,64 @@ class Config(BaseModel):
     species_2_genome_fasta: Path
 
     # Conserved files (optional)
-    species_1_to_species_2_organ_1_conserved: Optional[Path] = None
-    species_1_to_species_2_organ_2_conserved: Optional[Path] = None
-    species_2_to_species_1_organ_1_conserved: Optional[Path] = None
-    species_2_to_species_1_organ_2_conserved: Optional[Path] = None
+    species_1_to_species_2_organ_1_conserved: Path | None
+    species_1_to_species_2_organ_2_conserved: Path | None
+    species_2_to_species_1_organ_1_conserved: Path | None
+    species_2_to_species_1_organ_2_conserved: Path | None
 
     # Promoter/enhancer files (optional)
-    species_1_organ_1_promoters: Optional[Path] = None
-    species_1_organ_1_enhancers: Optional[Path] = None
-    species_1_organ_2_promoters: Optional[Path] = None
-    species_1_organ_2_enhancers: Optional[Path] = None
-    species_2_organ_1_promoters: Optional[Path] = None
-    species_2_organ_1_enhancers: Optional[Path] = None
-    species_2_organ_2_promoters: Optional[Path] = None
-    species_2_organ_2_enhancers: Optional[Path] = None
+    species_1_organ_1_promoters: Path | None
+    species_1_organ_1_enhancers: Path | None
+    species_1_organ_2_promoters: Path | None
+    species_1_organ_2_enhancers: Path | None
+    species_2_organ_1_promoters: Path | None
+    species_2_organ_1_enhancers: Path | None
+    species_2_organ_2_promoters: Path | None
+    species_2_organ_2_enhancers: Path | None
 
     # Mapped Promoter/enhancer files (optional)
-    species_1_to_species_2_organ_1_conserved_promoters: Optional[Path] = None
-    species_1_to_species_2_organ_1_conserved_enhancers: Optional[Path] = None
-    species_1_to_species_2_organ_2_conserved_promoters: Optional[Path] = None
-    species_1_to_species_2_organ_2_conserved_enhancers: Optional[Path] = None
-    species_2_to_species_1_organ_1_conserved_promoters: Optional[Path] = None
-    species_2_to_species_1_organ_1_conserved_enhancers: Optional[Path] = None
-    species_2_to_species_1_organ_2_conserved_promoters: Optional[Path] = None
-    species_2_to_species_1_organ_2_conserved_enhancers: Optional[Path] = None
-    
-    class Config:
-        arbitrary_types_allowed = True
-    
-    @validator('species_1_organ_1_peak_file', 'species_1_organ_2_peak_file', 
-               'species_2_organ_1_peak_file', 'species_2_organ_2_peak_file',
-               'species_1_tss_file', 'species_2_tss_file', 'species_1_genome_fasta', 
-               'species_2_genome_fasta')
-    def check_required_files_exist(cls, v):
-        assert v.exists(), f"Required file {v} does not exist"
-        return v
-    
-    @validator(
-        # HALPER files
-        'species_1_organ_1_to_species_2', 'species_1_organ_2_to_species_2',
-        'species_2_organ_1_to_species_1', 'species_2_organ_2_to_species_1',
-        # Conserved files
-        'species_1_to_species_2_organ_1_conserved', 'species_1_to_species_2_organ_2_conserved',
-        'species_2_to_species_1_organ_1_conserved', 'species_2_to_species_1_organ_2_conserved',
-        # Promoter/enhancer files
-        'species_1_organ_1_promoters', 'species_1_organ_1_enhancers',
-        'species_1_organ_2_promoters', 'species_1_organ_2_enhancers',
-        'species_2_organ_1_promoters', 'species_2_organ_1_enhancers',
-        'species_2_organ_2_promoters', 'species_2_organ_2_enhancers',
-        # Mapped Promoter/enhancer files
-        'species_1_to_species_2_organ_1_conserved_promoters', 'species_1_to_species_2_organ_1_conserved_enhancers',
-        'species_1_to_species_2_organ_2_conserved_promoters', 'species_1_to_species_2_organ_2_conserved_enhancers',
-        'species_2_to_species_1_organ_1_conserved_promoters', 'species_2_to_species_1_organ_1_conserved_enhancers',
-        'species_2_to_species_1_organ_2_conserved_promoters', 'species_2_to_species_1_organ_2_conserved_enhancers'
-    )
-    def check_optional_files_exist(cls, v):
-        if v is None:
-            return None
-        assert v.exists(), f"Optional file {v} does not exist"
-        return v
-    
-    @root_validator(pre=False)
-    def create_output_dir(cls, values):
-        output_dir = values.get('output_dir')
-        if output_dir and not output_dir.exists():
-            output_dir.mkdir(parents=True, exist_ok=True)
-            print(f"Created output directory {output_dir}")
-        return values
+    species_1_to_species_2_organ_1_conserved_promoters: Path | None
+    species_1_to_species_2_organ_1_conserved_enhancers: Path | None
+    species_1_to_species_2_organ_2_conserved_promoters: Path | None
+    species_1_to_species_2_organ_2_conserved_enhancers: Path | None
+    species_2_to_species_1_organ_1_conserved_promoters: Path | None
+    species_2_to_species_1_organ_1_conserved_enhancers: Path | None
+    species_2_to_species_1_organ_2_conserved_promoters: Path | None
+    species_2_to_species_1_organ_2_conserved_enhancers: Path | None
+
+    def __post_init__(self):
+        # Check if peak files exist
+        for peak_file in [self.species_1_organ_1_peak_file,
+                          self.species_1_organ_2_peak_file,
+                          self.species_2_organ_1_peak_file,
+                          self.species_2_organ_2_peak_file]:
+            assert peak_file.exists(), f"Peak file {peak_file} does not exist"
+        
+        # Check if HALPER files exist
+        for halper_file in [self.species_1_organ_1_to_species_2,
+                           self.species_1_organ_2_to_species_2,
+                           self.species_2_organ_1_to_species_1,
+                           self.species_2_organ_2_to_species_1]:
+            if halper_file is None:
+                continue
+            # If the narrowPeak file exists, if not, check the gzipped file
+            if not halper_file.exists():
+                zipped_halper_file = halper_file.with_suffix(".gz")
+                assert zipped_halper_file.exists(), f"HALPER file {zipped_halper_file} or {halper_file} does not exist"
+                # Unzip the file to the same directory
+                subprocess.run(["gunzip", zipped_halper_file])
+                print(f"Unzipped HALPER file {zipped_halper_file} to {halper_file}")
+            assert halper_file.exists(), f"HALPER file {halper_file} does not exist"
+        
+        # Check if TSS files exist
+        for tss_file in [self.species_1_tss_file,
+                         self.species_2_tss_file]:
+            assert tss_file.exists(), f"TSS file {tss_file} does not exist"
+        
+        # Create output directory if it doesn't exist
+        if not self.output_dir.exists():
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            print(f"Created output directory {self.output_dir}")
 
 def load_bedtool_config(config_path: Path, output_dir_entry: str) -> Config:
     """
